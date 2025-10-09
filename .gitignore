@@ -28,5 +28,23 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Claude session data (local testing)
+.claude/
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# Build artifacts
+statusline-go
+/statusline-go
