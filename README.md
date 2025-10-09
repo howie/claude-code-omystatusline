@@ -23,7 +23,29 @@ A rich, informative status line for [Claude Code](https://claude.com/claude-code
 
 ## Installation
 
-### Using Go Implementation (Recommended)
+### Quick Install (Recommended)
+
+Using the provided Makefile:
+
+```bash
+make install
+```
+
+This will automatically:
+- Compile the Go binary with optimizations
+- Install all necessary files to `~/.claude/`
+- Set executable permissions
+
+Then configure Claude Code by adding to your `~/.claude/config.json`:
+```json
+{
+  "statusLineCommand": "~/.claude/statusline-wrapper.sh"
+}
+```
+
+### Manual Installation
+
+#### Using Go Implementation
 
 1. **Build the Go binary:**
    ```bash
@@ -32,8 +54,8 @@ A rich, informative status line for [Claude Code](https://claude.com/claude-code
 
 2. **Copy the wrapper script:**
    ```bash
-   cp statusline-wrapper.sh ~/.claude/statusline
-   chmod +x ~/.claude/statusline
+   cp statusline-wrapper.sh ~/.claude/statusline-wrapper.sh
+   chmod +x ~/.claude/statusline-wrapper.sh
    ```
 
 3. **Configure Claude Code:**
@@ -41,19 +63,32 @@ A rich, informative status line for [Claude Code](https://claude.com/claude-code
    Add to your `~/.claude/config.json`:
    ```json
    {
-     "statusLineCommand": "~/.claude/statusline"
+     "statusLineCommand": "~/.claude/statusline-wrapper.sh"
    }
    ```
 
-### Using Bash Implementation
+#### Using Bash Implementation
 
 1. **Copy the bash script:**
    ```bash
-   cp statusline.sh ~/.claude/statusline
-   chmod +x ~/.claude/statusline
+   cp statusline.sh ~/.claude/statusline.sh
+   chmod +x ~/.claude/statusline.sh
    ```
 
-2. **Configure Claude Code** (same as above)
+2. **Configure Claude Code:**
+   ```json
+   {
+     "statusLineCommand": "~/.claude/statusline.sh"
+   }
+   ```
+
+### Uninstall
+
+To remove installed files:
+
+```bash
+make uninstall
+```
 
 ## How It Works
 
@@ -116,10 +151,29 @@ The Go implementation includes several optimizations:
 ├── statusline.go           # Go implementation (recommended)
 ├── statusline.sh           # Bash implementation (alternative)
 ├── statusline-wrapper.sh   # Wrapper for Go binary
+├── Makefile                # Build and installation automation
 └── README.md
 ```
 
 ### Building from Source
+
+Using Makefile commands:
+
+```bash
+# Build the Go binary
+make build
+
+# Install to ~/.claude/
+make install
+
+# Clean build artifacts
+make clean
+
+# Show all available commands
+make help
+```
+
+Or manually:
 
 ```bash
 # Build the Go binary
