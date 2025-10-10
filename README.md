@@ -234,6 +234,32 @@ make install
 
 MIT License - 歡迎自由客製化！
 
+## 常見問題 (FAQ)
+
+### 如何查看我的 Claude 使用狀況和重置時間？
+
+你可以隨時在 Claude 的網頁介面查看使用狀況和重置時間：
+
+1. 前往 [Claude.ai](https://claude.ai)
+2. 點擊左側選單的 **Settings（設定）**
+3. 進入 **Usage（使用狀況）** 區塊
+4. 你會看到：
+   - **Current session（當前 session）**：你目前活動 session 的使用量（當你發送訊息時會重置）
+   - **Weekly limits（每週限制）**：
+     - **All models（所有模型）**：顯示你的整體使用百分比和重置時間（例如：「Resets Thu 12:00 PM」）
+     - **Opus only（僅 Opus）**：如果適用，顯示 Opus 專用的使用量
+
+![Claude 使用狀況](docs/images/ClaudeCode_Status.png)
+
+這有助於你了解何時限制會重置，並據此規劃你的 Claude Code session。
+
+### 為什麼狀態列的 token 計數與網頁版使用百分比不一致？
+
+狀態列顯示的是 **session 層級的 token 消耗**（你目前對話的 context，最多 200k tokens），而網頁介面顯示的是 **每週 API 使用限制**（你已使用的每週配額百分比）。這是兩種不同的指標：
+
+- **狀態列**：追蹤當前 session 的 context window 使用量（影響回應品質）
+- **網頁介面**：追蹤每週方案限制的 API 使用量（影響計費/配額）
+
 ---
 
 ## Screenshot Preview
@@ -242,6 +268,32 @@ MIT License - 歡迎自由客製化！
 [💠 Sonnet 4.5] 📂 claude-code-omystatusline ⚡ main | ██████░░░░ 65% 130k | 2h45m
 ｜Write bilingual README explaining motivation and features
 ```
+
+## FAQ
+
+### How can I check my Claude usage status and reset time?
+
+You can always check your usage status and reset time in Claude's web interface:
+
+1. Go to [Claude.ai](https://claude.ai)
+2. Click on **Settings** (left sidebar)
+3. Navigate to **Usage** section
+4. You'll see:
+   - **Current session**: Usage for your active session (resets when you send a message)
+   - **Weekly limits**:
+     - **All models**: Shows your overall usage percentage and reset time (e.g., "Resets Thu 12:00 PM")
+     - **Opus only**: Shows Opus-specific usage if applicable
+
+![Claude Usage Status](docs/images/ClaudeCode_Status.png)
+
+This helps you understand when your limits will reset and plan your Claude Code sessions accordingly.
+
+### Why doesn't my status line token count match the web usage percentage?
+
+The status line shows **session-level token consumption** (your current conversation context, max 200k tokens), while the web interface shows **weekly API usage limits** (how much of your plan's weekly quota you've used). These are different metrics:
+
+- **Status line**: Tracks context window usage in current session (important for response quality)
+- **Web interface**: Tracks API usage against your weekly plan limits (important for billing/quota)
 
 ## Credits
 
