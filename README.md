@@ -1,5 +1,14 @@
 # Claude Code Custom Status Line
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/howie/claude-code-omystatusline?style=social)](https://github.com/howie/claude-code-omystatusline/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/howie/claude-code-omystatusline?style=social)](https://github.com/howie/claude-code-omystatusline/network)
+[![Go Report Card](https://goreportcard.com/badge/github.com/howie/claude-code-omystatusline)](https://goreportcard.com/report/github.com/howie/claude-code-omystatusline)
+[![GitHub release](https://img.shields.io/github/v/release/howie/claude-code-omystatusline)](https://github.com/howie/claude-code-omystatusline/releases)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/howie/claude-code-omystatusline)](go.mod)
+[![CI](https://github.com/howie/claude-code-omystatusline/workflows/CI/badge.svg)](https://github.com/howie/claude-code-omystatusline/actions/workflows/ci.yml)
+[![Last Commit](https://img.shields.io/github/last-commit/howie/claude-code-omystatusline)](https://github.com/howie/claude-code-omystatusline/commits/main)
+
 > A rich, context-aware status line for Claude Code that keeps you informed about what really matters.
 
 [English](#english) | [中文](#chinese)
@@ -117,7 +126,7 @@ Contributions welcome! This tool is built for the community by the community.
 
 ## License
 
-MIT License - customize freely!
+Apache License 2.0 - customize freely!
 
 ---
 
@@ -232,7 +241,7 @@ make install
 
 ## 授權
 
-MIT License - 歡迎自由客製化！
+Apache License 2.0 - 歡迎自由客製化！
 
 ## 常見問題 (FAQ)
 

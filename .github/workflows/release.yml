@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Build binaries
+      run: |
+        # Linux AMD64
+        GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-linux-amd64 statusline.go
+
+        # Linux ARM64
+        GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/statusline-go-linux-arm64 statusline.go
+
+        # macOS AMD64
+        GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-darwin-amd64 statusline.go
+
+        # macOS ARM64 (Apple Silicon)
+        GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/statusline-go-darwin-arm64 statusline.go
+
+        # Windows AMD64
+        GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-windows-amd64.exe statusline.go
+
+        # Make binaries executable
+        chmod +x dist/statusline-go-*
+
+    - name: Create checksums
+      run: |
+        cd dist
+        sha256sum statusline-go-* > checksums.txt
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat > release_notes.md << 'EOF'
+        ## What's Changed
+
+        See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes.
+
+        ## Installation
+
+        ### Quick Install (Unix-like systems)
+
+        ```bash
+        # Linux AMD64
+        curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/statusline-go-linux-amd64 -o ~/.claude/statusline-go
+        chmod +x ~/.claude/statusline-go
+
+        # macOS Apple Silicon
+        curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/statusline-go-darwin-arm64 -o ~/.claude/statusline-go
+        chmod +x ~/.claude/statusline-go
+        ```
+
+        ### Supported Platforms
+        - Linux (AMD64, ARM64)
+        - macOS (Intel, Apple Silicon)
+        - Windows (AMD64)
+
+        ## Verification
+
+        Download `checksums.txt` and verify your binary:
+        ```bash
+        sha256sum -c checksums.txt
+        ```
+
+        ## Full Changelog
+        https://github.com/${{ github.repository }}/compare/v${{ steps.get_version.outputs.VERSION }}...v${{ steps.get_version.outputs.VERSION }}
+        EOF
+
+        echo "Generated release notes"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/statusline-go-linux-amd64
+          dist/statusline-go-linux-arm64
+          dist/statusline-go-darwin-amd64
+          dist/statusline-go-darwin-arm64
+          dist/statusline-go-windows-amd64.exe
+          dist/checksums.txt
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update Go Report Card
+      run: |
+        curl -X POST https://goreportcard.com/checks -d "repo=github.com/${{ github.repository }}"
