@@ -40,8 +40,8 @@ type Input struct {
 	Model struct {
 		DisplayName string `json:"display_name"`
 	} `json:"model"`
-	SessionID      string `json:"session_id"`
-	Workspace      struct {
+	SessionID string `json:"session_id"`
+	Workspace struct {
 		CurrentDir string `json:"current_dir"`
 	} `json:"workspace"`
 	TranscriptPath string `json:"transcript_path,omitempty"`
@@ -247,7 +247,7 @@ func updateSession(sessionID string) {
 
 	// 讀取現有 session
 	if data, err := os.ReadFile(sessionFile); err == nil {
-		json.Unmarshal(data, &session)
+		_ = json.Unmarshal(data, &session) // Ignore error, use zero value if unmarshal fails
 	} else {
 		// 新 session
 		session = Session{
@@ -288,7 +288,7 @@ func updateSession(sessionID string) {
 
 	// 儲存
 	if data, err := json.Marshal(session); err == nil {
-		os.WriteFile(sessionFile, data, 0644)
+		_ = os.WriteFile(sessionFile, data, 0644) // Ignore error, session tracking is non-critical
 	}
 }
 
@@ -394,7 +394,6 @@ func calculateContextUsage(transcriptPath string) int {
 	defer file.Close()
 
 	// 讀取最後100行
-	lines := make([]string, 0, 100)
 	scanner := bufio.NewScanner(file)
 
 	// 設定更大的 buffer（1MB）以處理長 JSON 行
@@ -413,7 +412,7 @@ func calculateContextUsage(transcriptPath string) int {
 	if start < 0 {
 		start = 0
 	}
-	lines = allLines[start:]
+	lines := allLines[start:]
 
 	// 從後往前分析
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -532,7 +531,6 @@ func extractUserMessage(transcriptPath, sessionID string) string {
 	defer file.Close()
 
 	// 讀取最後200行
-	lines := make([]string, 0, 200)
 	scanner := bufio.NewScanner(file)
 
 	allLines := make([]string, 0)
@@ -544,7 +542,7 @@ func extractUserMessage(transcriptPath, sessionID string) string {
 	if start < 0 {
 		start = 0
 	}
-	lines = allLines[start:]
+	lines := allLines[start:]
 
 	// 從後往前搜尋使用者訊息
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -655,4 +653,3 @@ func formatUserMessage(message string) string {
 
 	return ""
 }
-
