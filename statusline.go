@@ -15,17 +15,17 @@ import (
 
 // ANSI 顏色定義
 const (
-	ColorReset  = "\\033[0m"
-	ColorGold   = "\\033[38;2;195;158;83m"
-	ColorCyan   = "\\033[38;2;118;170;185m"
-	ColorPink   = "\\033[38;2;255;182;193m"
-	ColorGreen  = "\\033[38;2;152;195;121m"
-	ColorGray   = "\\033[38;2;64;64;64m"
-	ColorSilver = "\\033[38;2;192;192;192m"
+	ColorReset  = "\033[0m"
+	ColorGold   = "\033[38;2;195;158;83m"
+	ColorCyan   = "\033[38;2;118;170;185m"
+	ColorPink   = "\033[38;2;255;182;193m"
+	ColorGreen  = "\033[38;2;152;195;121m"
+	ColorGray   = "\033[38;2;64;64;64m"
+	ColorSilver = "\033[38;2;192;192;192m"
 
-	ColorCtxGreen = "\\033[38;2;108;167;108m"
-	ColorCtxGold  = "\\033[38;2;188;155;83m"
-	ColorCtxRed   = "\\033[38;2;185;102;82m"
+	ColorCtxGreen = "\033[38;2;108;167;108m"
+	ColorCtxGold  = "\033[38;2;188;155;83m"
+	ColorCtxRed   = "\033[38;2;185;102;82m"
 )
 
 // 模型圖示和顏色
@@ -78,7 +78,7 @@ var (
 func main() {
 	var input Input
 	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to decode input: %v\\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to decode input: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -143,7 +143,7 @@ func main() {
 	projectName := filepath.Base(input.Workspace.CurrentDir)
 
 	// 輸出狀態列
-	fmt.Printf("%s[%s] 📂 %s%s%s | %s%s\\n",
+	fmt.Printf("%s[%s] 📂 %s%s%s | %s%s\n",
 		ColorReset, modelDisplay, projectName, gitBranch,
 		contextUsage, totalHours, ColorReset)
 
@@ -258,6 +258,19 @@ func updateSession(sessionID string) {
 			TotalSeconds:  0,
 			Intervals:     []Interval{{Start: currentTime, End: nil}},
 		}
+	}
+
+	// 若 session 檔案是舊日期，歸零改為今日的新區段
+	if session.Date != "" && session.Date != today {
+		session.Date = today
+		session.Start = currentTime
+		session.LastHeartbeat = currentTime
+		session.TotalSeconds = 0
+		session.Intervals = []Interval{{Start: currentTime, End: nil}}
+	}
+
+	if session.Date == "" {
+		session.Date = today
 	}
 
 	// 更新心跳
@@ -625,7 +638,7 @@ func formatUserMessage(message string) string {
 	maxLines := 3
 	lineWidth := 80
 
-	lines := strings.Split(message, "\\n")
+	lines := strings.Split(message, "\n")
 	var result []string
 
 	for i, line := range lines {
@@ -648,7 +661,7 @@ func formatUserMessage(message string) string {
 	}
 
 	if len(result) > 0 {
-		return strings.Join(result, "\\n") + "\\n"
+		return strings.Join(result, "\n") + "\n"
 	}
 
 	return ""
