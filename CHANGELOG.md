@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-10-11
+
+### Added
+- Professional badges to README (License, Stars, Forks, Go Report Card, Release, Go Version, CI, Last Commit)
+- GitHub Actions CI workflow for automated testing and linting
+- GitHub Actions Release workflow for automated binary releases
+- Go module support with go.mod file
+- Go Report Card integration with A+ rating
+- Cross-platform binary builds in CI/CD (Linux, macOS, Windows)
+
+### Fixed
+- License discrepancy in README (changed from MIT to Apache 2.0 to match LICENSE file)
+- Linting errors in statusline.go (unchecked error returns, ineffectual assignments)
+- Shell wrapper compatibility (changed shebang from zsh to bash for Ubuntu support)
+- CI test for shell wrapper to properly set up binary location
+
+### Changed
+- Improved code formatting with go fmt
+- Updated CI workflow to test on multiple Go versions (1.21, 1.22, 1.23)
+- Enhanced error handling in JSON unmarshaling and file operations
+
 ## [0.1.0] - 2025-10-10
 
 ### Added
@@ -38,4 +59,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Testing documentation for developers
 - Screenshot examples
 
-[0.1.0]: https://github.com/yourusername/claude-code-omystatusline/releases/tag/v0.1.0
+[0.1.1]: https://github.com/howie/claude-code-omystatusline/releases/tag/v0.1.1
+[0.1.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v0.1.0
