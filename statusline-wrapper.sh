@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 # Wrapper script to properly handle ANSI escape codes for Claude Code statusline
 # Calls the Go binary with JSON input and ensures ANSI codes are interpreted correctly
