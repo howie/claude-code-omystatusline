@@ -3,10 +3,10 @@
 # 變數定義
 INSTALL_DIR = $(HOME)/.claude
 BINARY_NAME = statusline-go
-GO_SOURCE = statusline.go
-WRAPPER_SCRIPT = statusline-wrapper.sh
-BASH_SCRIPT = statusline.sh
-INSTALL_SCRIPT = install.sh
+CMD_SOURCE = cmd/statusline
+WRAPPER_SCRIPT = scripts/statusline-wrapper.sh
+BASH_SCRIPT = scripts/statusline.sh
+INSTALL_SCRIPT = scripts/install.sh
 
 # Go 編譯選項
 GOOS ?= $(shell go env GOOS)
@@ -21,7 +21,7 @@ all: build
 # 編譯 Go binary
 build:
 	@echo "正在編譯 $(BINARY_NAME)..."
-	@go build $(GOFLAGS) -o $(BINARY_NAME) $(GO_SOURCE)
+	@go build $(GOFLAGS) -o $(BINARY_NAME) ./$(CMD_SOURCE)
 	@echo "編譯完成: $(BINARY_NAME)"
 
 # 互動式安裝（推薦）
@@ -33,16 +33,16 @@ install-simple: build
 	@echo "正在安裝到 $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
 	@cp $(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
-	@cp $(WRAPPER_SCRIPT) $(INSTALL_DIR)/$(WRAPPER_SCRIPT)
-	@cp $(BASH_SCRIPT) $(INSTALL_DIR)/$(BASH_SCRIPT)
+	@cp $(WRAPPER_SCRIPT) $(INSTALL_DIR)/statusline-wrapper.sh
+	@cp $(BASH_SCRIPT) $(INSTALL_DIR)/statusline.sh
 	@chmod +x $(INSTALL_DIR)/$(BINARY_NAME)
-	@chmod +x $(INSTALL_DIR)/$(WRAPPER_SCRIPT)
-	@chmod +x $(INSTALL_DIR)/$(BASH_SCRIPT)
+	@chmod +x $(INSTALL_DIR)/statusline-wrapper.sh
+	@chmod +x $(INSTALL_DIR)/statusline.sh
 	@echo "✓ 安裝完成！"
 	@echo "已安裝檔案："
 	@echo "  - $(INSTALL_DIR)/$(BINARY_NAME)"
-	@echo "  - $(INSTALL_DIR)/$(WRAPPER_SCRIPT)"
-	@echo "  - $(INSTALL_DIR)/$(BASH_SCRIPT)"
+	@echo "  - $(INSTALL_DIR)/statusline-wrapper.sh"
+	@echo "  - $(INSTALL_DIR)/statusline.sh"
 	@echo ""
 	@echo "提示：使用 'make install' 進行互動式安裝，可設定音訊提醒功能"
 

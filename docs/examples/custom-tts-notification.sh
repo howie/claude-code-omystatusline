@@ -6,11 +6,37 @@
 INPUT=$(cat)
 
 # ============================================================================
+# JSON 解析 - 提取 message 欄位
+# ============================================================================
+
+# 從 JSON 提取 message 欄位
+MESSAGE=$(echo "$INPUT" | jq -r '.message // ""' 2>/dev/null)
+
+# 如果 jq 不可用或失敗，使用 grep/sed 作為備援
+if [ -z "$MESSAGE" ] || [ "$MESSAGE" = "null" ]; then
+    MESSAGE=$(echo "$INPUT" | grep -o '"message"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/"message"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/' 2>/dev/null)
+fi
+
+# 如果還是提取不到，使用整個輸入
+if [ -z "$MESSAGE" ]; then
+    MESSAGE="$INPUT"
+fi
+
+# ============================================================================
 # 自訂語音訊息 - 根據不同情境播報不同內容
 # ============================================================================
 
+# 檢測需要確認的問題（優先級最高）
+if echo "$MESSAGE" | grep "?" > /dev/null || \
+   echo "$MESSAGE" | grep -iE "permission|confirm|approve" > /dev/null; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        say "Claude 需要您的確認"
+    elif command -v espeak &> /dev/null; then
+        espeak "Claude needs your confirmation" 2>/dev/null
+    fi
+
 # 檢測編譯錯誤
-if echo "$INPUT" | grep -iE "compilation error|build failed" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "compilation error|build failed" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "編譯失敗，請檢查程式碼"
     elif command -v espeak &> /dev/null; then
@@ -18,7 +44,7 @@ if echo "$INPUT" | grep -iE "compilation error|build failed" > /dev/null; then
     fi
 
 # 檢測測試失敗
-elif echo "$INPUT" | grep -iE "test failed|tests? failing" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "test failed|tests? failing" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "測試未通過，需要修正"
     elif command -v espeak &> /dev/null; then
@@ -26,7 +52,7 @@ elif echo "$INPUT" | grep -iE "test failed|tests? failing" > /dev/null; then
     fi
 
 # 檢測部署成功
-elif echo "$INPUT" | grep -iE "deployed|deployment successful" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "deployed|deployment successful" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "部署完成，上線成功"
     elif command -v espeak &> /dev/null; then
@@ -34,23 +60,15 @@ elif echo "$INPUT" | grep -iE "deployed|deployment successful" > /dev/null; then
     fi
 
 # 檢測 Git 操作
-elif echo "$INPUT" | grep -iE "pushed to|committed|pull request created" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "pushed to|committed|pull request created" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "Git 操作完成"
     elif command -v espeak &> /dev/null; then
         espeak "Git operation completed" 2>/dev/null
     fi
 
-# 檢測需要確認的問題
-elif echo "$INPUT" | grep -iE "would you like|do you want|should I|please confirm" > /dev/null; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        say "Claude 需要您的確認"
-    elif command -v espeak &> /dev/null; then
-        espeak "Claude needs your confirmation" 2>/dev/null
-    fi
-
 # 檢測 Token 警告（80% 以上）
-elif echo "$INPUT" | grep -E "🔴.*[8-9][0-9]%|🔴.*100%" > /dev/null; then
+elif echo "$MESSAGE" | grep -E "🔴.*[8-9][0-9]%|🔴.*100%" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "注意！Token 使用量接近上限"
     elif command -v espeak &> /dev/null; then
@@ -58,7 +76,7 @@ elif echo "$INPUT" | grep -E "🔴.*[8-9][0-9]%|🔴.*100%" > /dev/null; then
     fi
 
 # 一般錯誤
-elif echo "$INPUT" | grep -iE "error|failed" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "error|failed" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "發生錯誤"
     elif command -v espeak &> /dev/null; then
@@ -66,7 +84,7 @@ elif echo "$INPUT" | grep -iE "error|failed" > /dev/null; then
     fi
 
 # 任務完成
-elif echo "$INPUT" | grep -iE "completed|finished|done" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "completed|finished|done" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "任務完成"
     elif command -v espeak &> /dev/null; then

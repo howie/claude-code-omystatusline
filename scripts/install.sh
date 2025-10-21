@@ -372,7 +372,8 @@ compile_binary() {
     echo ""
 
     show_info "$(msg "compiling")"
-    if go build -ldflags="-s -w" -o "$BINARY_NAME" statusline.go 2>&1; then
+    # 編譯新的 cmd/statusline 目錄下的主程式
+    if go build -ldflags="-s -w" -o "$BINARY_NAME" ./cmd/statusline 2>&1; then
         show_progress "$(msg "compile_success")"
     else
         show_error "$(msg "compile_failed")"
@@ -479,8 +480,8 @@ install_files() {
     # 複製主要檔案
     show_info "$(msg "copying_files")"
     cp "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
-    cp "$WRAPPER_SCRIPT" "$INSTALL_DIR/$WRAPPER_SCRIPT"
-    cp "$BASH_SCRIPT" "$INSTALL_DIR/$BASH_SCRIPT"
+    cp "scripts/$WRAPPER_SCRIPT" "$INSTALL_DIR/$WRAPPER_SCRIPT"
+    cp "scripts/$BASH_SCRIPT" "$INSTALL_DIR/$BASH_SCRIPT"
 
     chmod +x "$INSTALL_DIR/$BINARY_NAME"
     chmod +x "$INSTALL_DIR/$WRAPPER_SCRIPT"
@@ -548,27 +549,68 @@ EOF
                 ;;
 
             2)  # 語音播報
-                cat > "$INSTALL_DIR/play-notification.sh" << 'EOF'
+                cat > "$INSTALL_DIR/play-notification.sh" << EOF
 #!/bin/bash
 
-# 提取關鍵資訊並語音播報
-INPUT=$(cat)
+# TTS Language Setting (set during installation)
+TTS_LANG="$LANG_CHOICE"
 
-if echo "$INPUT" | grep -iE "error|failed" > /dev/null; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        say "任務失敗，請檢查" 2>/dev/null
+# 提取關鍵資訊並語音播報
+INPUT=\$(cat)
+
+# 從 JSON 提取 message 欄位
+MESSAGE=\$(echo "\$INPUT" | jq -r '.message // ""' 2>/dev/null)
+
+# 如果 jq 不可用或失敗，使用 grep/sed 作為備援
+if [ -z "\$MESSAGE" ] || [ "\$MESSAGE" = "null" ]; then
+    MESSAGE=\$(echo "\$INPUT" | grep -o '"message"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/"message"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/' 2>/dev/null)
+fi
+
+# 如果還是提取不到，使用整個輸入
+if [ -z "\$MESSAGE" ]; then
+    MESSAGE="\$INPUT"
+fi
+
+# 檢查是否需要使用者確認（問號 OR 關鍵字）
+if echo "\$MESSAGE" | grep "?" > /dev/null || \
+   echo "\$MESSAGE" | grep -iE "permission|confirm|approve" > /dev/null; then
+    if [[ "\$OSTYPE" == "darwin"* ]]; then
+        if [ "\$TTS_LANG" = "zh" ]; then
+            say "Claude 需要您的確認" 2>/dev/null
+        else
+            say "Claude needs your confirmation" 2>/dev/null
+        fi
+    elif command -v espeak &> /dev/null; then
+        espeak "Claude needs your confirmation" 2>/dev/null
+    fi
+
+# 檢查錯誤
+elif echo "\$MESSAGE" | grep -iE "error|failed" > /dev/null; then
+    if [[ "\$OSTYPE" == "darwin"* ]]; then
+        if [ "\$TTS_LANG" = "zh" ]; then
+            say "任務失敗，請檢查" 2>/dev/null
+        else
+            say "Task failed, please check" 2>/dev/null
+        fi
     elif command -v espeak &> /dev/null; then
         espeak "Task failed, please check" 2>/dev/null
     fi
-elif echo "$INPUT" | grep -iE "completed|finished" > /dev/null; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        say "任務完成" 2>/dev/null
+
+# 檢查完成
+elif echo "\$MESSAGE" | grep -iE "completed|finished" > /dev/null; then
+    if [[ "\$OSTYPE" == "darwin"* ]]; then
+        if [ "\$TTS_LANG" = "zh" ]; then
+            say "任務完成" 2>/dev/null
+        else
+            say "Task completed" 2>/dev/null
+        fi
     elif command -v espeak &> /dev/null; then
         espeak "Task completed" 2>/dev/null
     fi
+
+# 其他情況播放音效
 else
-    # 一般提醒音
-    if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ "\$OSTYPE" == "darwin"* ]]; then
         afplay /System/Library/Sounds/Glass.aiff 2>/dev/null
     elif command -v paplay &> /dev/null; then
         paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null
@@ -577,7 +619,7 @@ else
     fi
 fi
 
-echo "$INPUT"
+echo "\$INPUT"
 EOF
                 show_progress "$(msg "audio_tts_done")"
 
@@ -638,12 +680,21 @@ configure_claude_code() {
 
         # 建立或更新設定
         if [ "$INSTALL_AUDIO" = true ]; then
-            # 包含音訊提醒的設定
+            # 包含音訊提醒的設定（使用新版 Claude Code 2.0+ 陣列格式）
             cat > "$CONFIG_FILE" << EOF
 {
   "statusLineCommand": "$INSTALL_DIR/$WRAPPER_SCRIPT",
   "hooks": {
-    "Notification": "$INSTALL_DIR/play-notification.sh"
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$INSTALL_DIR/play-notification.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 EOF
@@ -718,8 +769,8 @@ show_summary() {
 # ============================================================================
 
 main() {
-    # 檢查是否在專案目錄
-    if [ ! -f "statusline.go" ]; then
+    # 檢查是否在專案目錄 (檢查新的目錄結構)
+    if [ ! -d "cmd/statusline" ] || [ ! -f "go.mod" ]; then
         show_error "Please run this script in the claude-code-omystatusline project directory"
         show_error "請在 claude-code-omystatusline 專案目錄中執行此腳本"
         exit 1
