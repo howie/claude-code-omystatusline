@@ -9,7 +9,21 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/voicereminder"
 )
 
+const version = "1.1.0"
+
 func main() {
+	// 處理命令列參數
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--help", "-h":
+			printHelp()
+			return
+		case "--version", "-v":
+			fmt.Printf("voice-reminder version %s\n", version)
+			return
+		}
+	}
+
 	// 1. 讀取 stdin (Hook JSON 輸入)
 	inputBytes, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -56,7 +70,7 @@ func main() {
 
 	// 7. 播放語音
 	logger.Log("開始播放語音...")
-	if err := voicereminder.Speak(message, config.Speed, config.Language); err != nil {
+	if err := voicereminder.SpeakWithLogger(message, config.Speed, config.Language, logger); err != nil {
 		logger.Log("語音播放錯誤: %v", err)
 	} else {
 		logger.Log("語音播放成功")
@@ -72,4 +86,44 @@ func main() {
 	// 9. Passthrough (Hook 必須)
 	fmt.Println(string(inputBytes))
 	logger.Log("========== 處理完成 ==========\n")
+}
+
+func printHelp() {
+	fmt.Println("voice-reminder - Claude Code Voice Notification System")
+	fmt.Printf("Version: %s\n\n", version)
+	fmt.Println("DESCRIPTION:")
+	fmt.Println("  A hook handler for Claude Code that provides voice notifications")
+	fmt.Println("  when important events occur (confirmations, errors, completions).")
+	fmt.Println()
+	fmt.Println("USAGE:")
+	fmt.Println("  voice-reminder < hook-input.json")
+	fmt.Println()
+	fmt.Println("  This command is typically used as a Claude Code hook and receives")
+	fmt.Println("  JSON input from stdin containing hook event information.")
+	fmt.Println()
+	fmt.Println("OPTIONS:")
+	fmt.Println("  -h, --help     Show this help message")
+	fmt.Println("  -v, --version  Show version information")
+	fmt.Println()
+	fmt.Println("CONFIGURATION:")
+	fmt.Println("  Config file:  ~/.claude/voice-reminder-config.json")
+	fmt.Println("  Enable file:  ~/.claude/voice-reminder-enabled")
+	fmt.Println("  Debug log:    ~/.claude/voice-reminder-debug.log")
+	fmt.Println("  Stats file:   ~/.claude/voice-reminder-stats.json")
+	fmt.Println()
+	fmt.Println("FEATURES:")
+	fmt.Println("  - 10-second timeout protection for voice playback")
+	fmt.Println("  - Automatic retry on failure (1 retry)")
+	fmt.Println("  - Fallback to system sounds when voice fails")
+	fmt.Println("  - Multi-language support (English, Chinese)")
+	fmt.Println("  - Debug logging for troubleshooting")
+	fmt.Println()
+	fmt.Println("SLASH COMMANDS:")
+	fmt.Println("  /voice-reminder-on     Enable voice notifications")
+	fmt.Println("  /voice-reminder-off    Disable voice notifications")
+	fmt.Println("  /voice-reminder-stats  Show usage statistics")
+	fmt.Println("  /voice-reminder-test   Test the voice system")
+	fmt.Println()
+	fmt.Println("For more information, visit:")
+	fmt.Println("  https://github.com/howie/claude-code-omystatusline")
 }
