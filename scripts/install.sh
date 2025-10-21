@@ -380,6 +380,15 @@ compile_binary() {
         exit 1
     fi
 
+    # 編譯 voice-reminder
+    show_info "正在編譯 voice-reminder..."
+    if go build -ldflags="-s -w" -o "voice-reminder" ./cmd/voice-reminder 2>&1; then
+        show_progress "voice-reminder 編譯完成"
+    else
+        show_error "voice-reminder 編譯失敗"
+        exit 1
+    fi
+
     echo ""
     sleep 1
 }
@@ -488,6 +497,32 @@ install_files() {
     chmod +x "$INSTALL_DIR/$BASH_SCRIPT"
 
     show_progress "$(msg "files_installed")"
+
+    # 安裝 voice-reminder
+    show_info "正在安裝 voice-reminder..."
+    cp "voice-reminder" "$INSTALL_DIR/voice-reminder"
+    chmod +x "$INSTALL_DIR/voice-reminder"
+
+    # 複製配置檔案（如果不存在）
+    if [ ! -f "$INSTALL_DIR/voice-reminder-config.json" ]; then
+        cp "configs/voice-reminder-config.json" "$INSTALL_DIR/voice-reminder-config.json"
+    fi
+
+    # 創建 scripts 目錄並複製相關腳本
+    mkdir -p "$INSTALL_DIR/scripts"
+    cp "scripts/toggle-voice-reminder.sh" "$INSTALL_DIR/scripts/"
+    cp "scripts/test-voice-reminder.sh" "$INSTALL_DIR/scripts/"
+    chmod +x "$INSTALL_DIR/scripts/toggle-voice-reminder.sh"
+    chmod +x "$INSTALL_DIR/scripts/test-voice-reminder.sh"
+
+    # 創建 commands 目錄並複製 slash commands
+    mkdir -p "$INSTALL_DIR/commands"
+    cp .claude/commands/voice-reminder-*.md "$INSTALL_DIR/commands/"
+
+    # 預設啟用 voice-reminder
+    echo "true" > "$INSTALL_DIR/voice-reminder-enabled"
+
+    show_progress "voice-reminder 已安裝"
 
     # 安裝音訊提醒
     if [ "$INSTALL_AUDIO" = true ]; then
@@ -679,19 +714,42 @@ configure_claude_code() {
             show_progress "$(msg "backup_config")"
         fi
 
-        # 建立或更新設定
+        # 建立或更新設定（使用新版 voice-reminder 系統）
         if [ "$INSTALL_AUDIO" = true ]; then
-            # 包含音訊提醒的設定（使用新版 Claude Code 2.0+ 陣列格式）
+            # 包含 voice-reminder 的設定（支援三個 hook 事件）
             cat > "$CONFIG_FILE" << EOF
 {
   "statusLineCommand": "$INSTALL_DIR/$WRAPPER_SCRIPT",
   "hooks": {
     "Notification": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "$INSTALL_DIR/play-notification.sh"
+            "command": "$INSTALL_DIR/voice-reminder"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$INSTALL_DIR/voice-reminder"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$INSTALL_DIR/voice-reminder"
           }
         ]
       }

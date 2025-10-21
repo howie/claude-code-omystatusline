@@ -88,14 +88,24 @@ chmod +x ~/.claude/play-notification.sh
 {
   "statusLineCommand": "~/.claude/statusline-wrapper.sh",
   "hooks": {
-    "assistantMessageEnd": "~/.claude/play-notification.sh"
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/play-notification.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 **說明：**
-- `assistantMessageEnd`：當 Claude 完成回覆時觸發
-- 這樣每次 Claude 完成任務等待你的輸入時，都會播放音訊
+- `Notification`：當 Claude Code 發送通知時觸發（包括需要權限確認、閒置 60 秒等情況）
+- 這樣當 Claude 需要你的確認或輸入時，都會播放音訊
 
 #### 步驟 3: 測試
 
@@ -157,7 +167,17 @@ chmod +x ~/.claude/smart-notification.sh
 ```json
 {
   "hooks": {
-    "assistantMessageEnd": "~/.claude/smart-notification.sh"
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/smart-notification.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -604,14 +624,24 @@ Edit `~/.claude/config.json` to add hook configuration:
 {
   "statusLineCommand": "~/.claude/statusline-wrapper.sh",
   "hooks": {
-    "assistantMessageEnd": "~/.claude/play-notification.sh"
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/play-notification.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 **Explanation:**
-- `assistantMessageEnd`: Triggers when Claude completes a response
-- This plays a sound every time Claude finishes a task and waits for your input
+- `Notification`: Triggers when Claude Code sends notifications (including permission requests, 60-second idle timeout, etc.)
+- This plays a sound when Claude needs your confirmation or input
 
 #### Step 3: Test
 
@@ -673,7 +703,17 @@ Use in `~/.claude/config.json`:
 ```json
 {
   "hooks": {
-    "assistantMessageEnd": "~/.claude/smart-notification.sh"
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/smart-notification.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 ```

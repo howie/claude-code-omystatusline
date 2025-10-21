@@ -1,0 +1,37 @@
+{
+  "debug_mode": false,
+  "language": "zh",
+  "speed": 180,
+  "messages": {
+    "notification": {
+      "confirmation": ["Claude 需要您的確認", "主人請確認", "需要您做個決定"],
+      "error": "任務失敗，請檢查",
+      "completed": ["任務完成", "工作完成了"],
+      "default": "請注意"
+    },
+    "stop": {
+      "default": ["Claude 回應完成", "我說完了", "等待您的指示"]
+    },
+    "subagent_stop": {
+      "default": "子任務已完成"
+    }
+  },
+  "messages_en": {
+    "notification": {
+      "confirmation": "Claude needs your confirmation",
+      "error": "Task failed, please check",
+      "completed": "Task completed",
+      "default": "Attention needed"
+    },
+    "stop": {
+      "default": "Claude finished responding"
+    },
+    "subagent_stop": {
+      "default": "Subagent task completed"
+    }
+  },
+  "sound_effects": {
+    "enabled": true,
+    "fallback_sound": "/System/Library/Sounds/Glass.aiff"
+  }
+}

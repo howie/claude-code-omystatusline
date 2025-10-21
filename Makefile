@@ -3,7 +3,9 @@
 # 變數定義
 INSTALL_DIR = $(HOME)/.claude
 BINARY_NAME = statusline-go
+VOICE_REMINDER_BINARY = voice-reminder
 CMD_SOURCE = cmd/statusline
+VOICE_REMINDER_SOURCE = cmd/voice-reminder
 WRAPPER_SCRIPT = scripts/statusline-wrapper.sh
 BASH_SCRIPT = scripts/statusline.sh
 INSTALL_SCRIPT = scripts/install.sh
@@ -13,16 +15,22 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOFLAGS = -ldflags="-s -w"
 
-.PHONY: all build install install-simple uninstall clean test install-hooks uninstall-hooks help
+.PHONY: all build build-voice-reminder install install-simple uninstall clean test install-hooks uninstall-hooks help
 
 # 預設目標
-all: build
+all: build build-voice-reminder
 
 # 編譯 Go binary
 build:
 	@echo "正在編譯 $(BINARY_NAME)..."
 	@go build $(GOFLAGS) -o $(BINARY_NAME) ./$(CMD_SOURCE)
 	@echo "編譯完成: $(BINARY_NAME)"
+
+# 編譯 voice-reminder binary
+build-voice-reminder:
+	@echo "正在編譯 $(VOICE_REMINDER_BINARY)..."
+	@go build $(GOFLAGS) -o $(VOICE_REMINDER_BINARY) ./$(VOICE_REMINDER_SOURCE)
+	@echo "編譯完成: $(VOICE_REMINDER_BINARY)"
 
 # 互動式安裝（推薦）
 install:
@@ -52,12 +60,19 @@ uninstall:
 	@rm -f $(INSTALL_DIR)/$(BINARY_NAME)
 	@rm -f $(INSTALL_DIR)/$(WRAPPER_SCRIPT)
 	@rm -f $(INSTALL_DIR)/$(BASH_SCRIPT)
+	@rm -f $(INSTALL_DIR)/$(VOICE_REMINDER_BINARY)
+	@rm -f $(INSTALL_DIR)/voice-reminder-config.json
+	@rm -f $(INSTALL_DIR)/voice-reminder-enabled
+	@rm -rf $(INSTALL_DIR)/scripts
+	@rm -rf $(INSTALL_DIR)/commands
+	@rm -f $(INSTALL_DIR)/play-notification.sh
 	@echo "✓ 卸載完成！"
 
 # 清理編譯產物
 clean:
 	@echo "正在清理..."
 	@rm -f $(BINARY_NAME)
+	@rm -f $(VOICE_REMINDER_BINARY)
 	@echo "✓ 清理完成！"
 
 # 執行測試
