@@ -362,7 +362,7 @@ compile_binary() {
     echo ""
 
     show_info "$(msg "compiling")"
-    if go build -ldflags="-s -w" -o "$BINARY_NAME" statusline.go 2>&1 | grep -v "^#"; then
+    if go build -ldflags="-s -w" -o "$BINARY_NAME" statusline.go 2>&1; then
         show_progress "$(msg "compile_success")"
     else
         show_error "$(msg "compile_failed")"

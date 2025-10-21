@@ -13,7 +13,7 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOFLAGS = -ldflags="-s -w"
 
-.PHONY: all build install install-interactive install-simple uninstall clean help
+.PHONY: all build install install-simple uninstall clean test install-hooks uninstall-hooks help
 
 # 預設目標
 all: build
@@ -59,6 +59,24 @@ clean:
 	@echo "正在清理..."
 	@rm -f $(BINARY_NAME)
 	@echo "✓ 清理完成！"
+
+# 執行測試
+test:
+	@echo "正在執行測試..."
+	@go test -v ./...
+	@echo "✓ 測試完成！"
+
+# 安裝 Git hooks
+install-hooks:
+	@echo "正在安裝 Git hooks..."
+	@chmod +x .githooks/install-hooks.sh
+	@./.githooks/install-hooks.sh
+
+# 卸載 Git hooks
+uninstall-hooks:
+	@echo "正在卸載 Git hooks..."
+	@rm -f .git/hooks/pre-push
+	@echo "✓ Git hooks 已卸載"
 
 # 顯示幫助
 help:
