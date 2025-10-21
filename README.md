@@ -85,6 +85,7 @@ All the information you need, updated with every interaction.
 - ✅ **User Message**: Last message displayed for quick context recall
 - ✅ **Performance**: Concurrent goroutines for sub-100ms status updates
 - 🔔 **Audio Notifications**: Play sounds when work needs attention (optional feature) - [Setup Guide](docs/features/audio-notifications/README.md)
+- 📁 **Modular Architecture**: Clean separation of concerns with pkg/ for reusable packages
 
 ## Installation
 
@@ -117,9 +118,11 @@ make install-simple
 Then manually add to your `~/.claude/config.json`:
 ```json
 {
-  "statusLineCommand": "~/.claude/statusline-wrapper.sh"
+  "statusLineCommand": "~/.claude/scripts/statusline-wrapper.sh"
 }
 ```
+
+Note: The actual installation copies the wrapper to `~/.claude/statusline-wrapper.sh` for backward compatibility.
 
 ### Manual Installation
 

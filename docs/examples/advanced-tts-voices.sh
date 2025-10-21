@@ -5,6 +5,23 @@
 INPUT=$(cat)
 
 # ============================================================================
+# JSON 解析 - 提取 message 欄位
+# ============================================================================
+
+# 從 JSON 提取 message 欄位
+MESSAGE=$(echo "$INPUT" | jq -r '.message // ""' 2>/dev/null)
+
+# 如果 jq 不可用或失敗，使用 grep/sed 作為備援
+if [ -z "$MESSAGE" ] || [ "$MESSAGE" = "null" ]; then
+    MESSAGE=$(echo "$INPUT" | grep -o '"message"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/"message"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/' 2>/dev/null)
+fi
+
+# 如果還是提取不到，使用整個輸入
+if [ -z "$MESSAGE" ]; then
+    MESSAGE="$INPUT"
+fi
+
+# ============================================================================
 # macOS 可用的中文聲音 (使用 say -v ? | grep zh 查看完整列表)
 # ============================================================================
 # Ting-Ting (繁體中文，女性，自然)
@@ -18,8 +35,18 @@ INPUT=$(cat)
 # 快速: 300-400 words/min
 # 慢速: 100-150 words/min
 
+# 檢測需要確認 - 使用慢速清晰發音（優先級最高）
+if echo "$MESSAGE" | grep "?" > /dev/null || \
+   echo "$MESSAGE" | grep -iE "permission|confirm|approve" > /dev/null; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # 使用較慢語速，確保清楚聽到
+        say -v Ting-Ting -r 180 "Claude 正在等待您的確認"
+    elif command -v espeak &> /dev/null; then
+        espeak -s 140 "Claude is waiting for your confirmation" 2>/dev/null
+    fi
+
 # 檢測緊急錯誤 - 使用快速語音
-if echo "$INPUT" | grep -iE "critical|urgent|emergency|fatal" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "critical|urgent|emergency|fatal" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # 使用 Ting-Ting 聲音，快速語速
         say -v Ting-Ting -r 250 "緊急！發現嚴重錯誤，請立即處理"
@@ -28,7 +55,7 @@ if echo "$INPUT" | grep -iE "critical|urgent|emergency|fatal" > /dev/null; then
     fi
 
 # 檢測警告 - 使用正常語速
-elif echo "$INPUT" | grep -iE "warning|caution" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "warning|caution" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say -v Ting-Ting -r 200 "注意，發現警告訊息"
     elif command -v espeak &> /dev/null; then
@@ -36,7 +63,7 @@ elif echo "$INPUT" | grep -iE "warning|caution" > /dev/null; then
     fi
 
 # 檢測成功部署 - 使用愉快的語調
-elif echo "$INPUT" | grep -iE "deployed successfully|deployment complete" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "deployed successfully|deployment complete" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # 使用稍快的語速表示興奮
         say -v Ting-Ting -r 220 "太好了！部署成功"
@@ -45,24 +72,15 @@ elif echo "$INPUT" | grep -iE "deployed successfully|deployment complete" > /dev
     fi
 
 # 檢測測試通過 - 所有測試通過
-elif echo "$INPUT" | grep -iE "all tests passed|tests? successful" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "all tests passed|tests? successful" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say -v Ting-Ting -r 210 "所有測試通過，做得好"
     elif command -v espeak &> /dev/null; then
         espeak -s 155 "All tests passed, well done" 2>/dev/null
     fi
 
-# 檢測需要輸入 - 使用慢速清晰發音
-elif echo "$INPUT" | grep -iE "please confirm|need your input|waiting for you" > /dev/null; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # 使用較慢語速，確保清楚聽到
-        say -v Ting-Ting -r 180 "Claude 正在等待您的輸入"
-    elif command -v espeak &> /dev/null; then
-        espeak -s 140 "Claude is waiting for your input" 2>/dev/null
-    fi
-
 # 檢測 Token 使用警告
-elif echo "$INPUT" | grep -E "🔴.*[8-9][0-9]%|🔴.*100%" > /dev/null; then
+elif echo "$MESSAGE" | grep -E "🔴.*[8-9][0-9]%|🔴.*100%" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say -v Ting-Ting -r 190 "注意！Context 使用量已超過百分之八十"
     elif command -v espeak &> /dev/null; then
@@ -70,7 +88,7 @@ elif echo "$INPUT" | grep -E "🔴.*[8-9][0-9]%|🔴.*100%" > /dev/null; then
     fi
 
 # 一般任務完成
-elif echo "$INPUT" | grep -iE "completed|finished" > /dev/null; then
+elif echo "$MESSAGE" | grep -iE "completed|finished" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say -v Ting-Ting -r 200 "任務完成"
     elif command -v espeak &> /dev/null; then
