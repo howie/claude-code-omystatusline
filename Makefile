@@ -70,8 +70,7 @@ uninstall:
 # 清理編譯產物
 clean:
 	@echo "正在清理..."
-	@rm -f $(BINARY_NAME)
-	@rm -f $(VOICE_REMINDER_BINARY)
+	@rm -rf $(OUTPUT_DIR)
 	@echo "✓ 清理完成！"
 
 # 執行測試

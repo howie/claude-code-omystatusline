@@ -16,6 +16,7 @@ NC='\033[0m' # No Color
 # 安裝目錄
 INSTALL_DIR="$HOME/.claude/omystatusline"
 CLAUDE_DIR="$HOME/.claude"
+OUTPUT_DIR="output"
 BINARY_NAME="statusline-go"
 WRAPPER_SCRIPT="statusline-wrapper.sh"
 BASH_SCRIPT="statusline.sh"
@@ -374,7 +375,8 @@ compile_binary() {
 
     show_info "$(msg "compiling")"
     # 編譯新的 cmd/statusline 目錄下的主程式
-    if go build -ldflags="-s -w" -o "$BINARY_NAME" ./cmd/statusline 2>&1; then
+    mkdir -p "$OUTPUT_DIR"
+    if go build -ldflags="-s -w" -o "$OUTPUT_DIR/$BINARY_NAME" ./cmd/statusline 2>&1; then
         show_progress "$(msg "compile_success")"
     else
         show_error "$(msg "compile_failed")"
@@ -383,7 +385,7 @@ compile_binary() {
 
     # 編譯 voice-reminder
     show_info "正在編譯 voice-reminder..."
-    if go build -ldflags="-s -w" -o "voice-reminder" ./cmd/voice-reminder 2>&1; then
+    if go build -ldflags="-s -w" -o "$OUTPUT_DIR/voice-reminder" ./cmd/voice-reminder 2>&1; then
         show_progress "voice-reminder 編譯完成"
     else
         show_error "voice-reminder 編譯失敗"
@@ -496,7 +498,7 @@ install_files() {
 
     # 複製 statusline 主要檔案
     show_info "$(msg "copying_files")"
-    cp "$BINARY_NAME" "$INSTALL_DIR/bin/$BINARY_NAME"
+    cp "$OUTPUT_DIR/$BINARY_NAME" "$INSTALL_DIR/bin/$BINARY_NAME"
     cp "scripts/$WRAPPER_SCRIPT" "$INSTALL_DIR/bin/$WRAPPER_SCRIPT"
     cp "scripts/$BASH_SCRIPT" "$INSTALL_DIR/scripts/$BASH_SCRIPT"
 
@@ -508,7 +510,7 @@ install_files() {
 
     # 安裝 voice-reminder plugin
     show_info "正在安裝 voice-reminder plugin..."
-    cp "voice-reminder" "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
+    cp "$OUTPUT_DIR/voice-reminder" "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
     chmod +x "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
 
     # 複製配置檔案（如果不存在）
@@ -860,7 +862,7 @@ main() {
     show_summary
 
     # 清理暫存檔案
-    rm -f "$BINARY_NAME"
+    rm -rf "$OUTPUT_DIR"
 }
 
 # 執行主程式
