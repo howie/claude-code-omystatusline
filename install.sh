@@ -72,6 +72,11 @@ msg() {
                 "invalid_using_default") echo "無效的選擇，將使用預設音效" ;;
                 "custom_path_prompt") echo "請輸入自訂音訊檔案路徑 (留空使用預設)" ;;
                 "file_not_exist") echo "檔案不存在，將使用預設音效" ;;
+                "test_tts_q") echo "是否要測試 TTS 語音播報？" ;;
+                "test_tts_success") echo "測試成功訊息播報" ;;
+                "test_tts_error") echo "測試錯誤訊息播報" ;;
+                "test_tts_general") echo "測試一般提示音" ;;
+                "testing_in_progress") echo "正在播放測試語音..." ;;
 
                 # 安裝檔案
                 "creating_dir") echo "建立安裝目錄..." ;;
@@ -156,6 +161,11 @@ msg() {
                 "invalid_using_default") echo "Invalid choice, will use default sound" ;;
                 "custom_path_prompt") echo "Enter custom audio file path (leave empty for default)" ;;
                 "file_not_exist") echo "File does not exist, will use default sound" ;;
+                "test_tts_q") echo "Would you like to test TTS voice output?" ;;
+                "test_tts_success") echo "Testing success message" ;;
+                "test_tts_error") echo "Testing error message" ;;
+                "test_tts_general") echo "Testing general notification" ;;
+                "testing_in_progress") echo "Playing test audio..." ;;
 
                 # Installing files
                 "creating_dir") echo "Creating installation directory..." ;;
@@ -421,6 +431,40 @@ configure_audio_notifications() {
     sleep 1
 }
 
+# 測試 TTS 語音播報
+test_tts_notification() {
+    local test_script="$1"
+
+    show_header
+    echo -e "${BLUE}$(msg "step_audio") - TTS Test${NC}"
+    echo ""
+
+    if ask_yes_no "$(msg "test_tts_q")" "y"; then
+        echo ""
+
+        # 測試 1: 成功訊息
+        show_info "$(msg "test_tts_success")"
+        echo "Task completed successfully" | "$test_script"
+        sleep 2
+
+        # 測試 2: 錯誤訊息
+        show_info "$(msg "test_tts_error")"
+        echo "Error: something failed" | "$test_script"
+        sleep 2
+
+        # 測試 3: 一般通知
+        show_info "$(msg "test_tts_general")"
+        echo "General notification message" | "$test_script"
+        sleep 2
+
+        echo ""
+        show_progress "$(msg "testing_in_progress")"
+    fi
+
+    echo ""
+    sleep 1
+}
+
 # 安裝檔案
 install_files() {
     show_header
@@ -550,6 +594,12 @@ EOF
         esac
 
         chmod +x "$INSTALL_DIR/play-notification.sh"
+
+        # 如果是 TTS 模式，提供測試選項
+        if [ $AUDIO_TYPE -eq 2 ]; then
+            echo ""
+            test_tts_notification "$INSTALL_DIR/play-notification.sh"
+        fi
     fi
 
     echo ""
