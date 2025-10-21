@@ -4,12 +4,12 @@ import "time"
 
 // Config 語音提醒配置
 type Config struct {
-	DebugMode    bool                       `json:"debug_mode"`
-	Language     string                     `json:"language"`
-	Speed        int                        `json:"speed"`
-	Messages     map[string]EventMessages   `json:"messages"`
-	MessagesEN   map[string]EventMessages   `json:"messages_en"`
-	SoundEffects SoundConfig                `json:"sound_effects"`
+	DebugMode    bool                     `json:"debug_mode"`
+	Language     string                   `json:"language"`
+	Speed        int                      `json:"speed"`
+	Messages     map[string]EventMessages `json:"messages"`
+	MessagesEN   map[string]EventMessages `json:"messages_en"`
+	SoundEffects SoundConfig              `json:"sound_effects"`
 }
 
 // EventMessages 事件訊息配置
@@ -28,16 +28,16 @@ type SoundConfig struct {
 
 // HookInput Claude Code Hook 輸入
 type HookInput struct {
-	Message       string `json:"message"`
-	HookEventName string `json:"hook_event_name"`
-	SessionID     string `json:"session_id"`
+	Message        string `json:"message"`
+	HookEventName  string `json:"hook_event_name"`
+	SessionID      string `json:"session_id"`
 	TranscriptPath string `json:"transcript_path"`
-	Cwd           string `json:"cwd"`
+	Cwd            string `json:"cwd"`
 }
 
 // Stats 觸發統計
 type Stats struct {
-	NotificationCount  int       `json:"notification_count"`
+	NotificationCount int       `json:"notification_count"`
 	StopCount         int       `json:"stop_count"`
 	SubagentStopCount int       `json:"subagent_stop_count"`
 	LastTriggered     time.Time `json:"last_triggered"`

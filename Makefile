@@ -16,7 +16,7 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOFLAGS = -ldflags="-s -w"
 
-.PHONY: all build build-voice-reminder install install-simple uninstall clean test lint install-hooks uninstall-hooks help
+.PHONY: all build build-voice-reminder install install-simple uninstall clean test lint fmt install-hooks uninstall-hooks help
 
 # 預設目標
 all: build build-voice-reminder
@@ -77,8 +77,22 @@ test:
 	@go test -v ./...
 	@echo "✓ 測試完成！"
 
+# 格式化程式碼
+fmt:
+	@echo "正在格式化程式碼..."
+	@gofmt -s -w .
+	@echo "✓ 程式碼格式化完成！"
+
 # 執行 linting
 lint:
+	@echo "正在執行 gofmt 檢查..."
+	@if [ "$$(gofmt -s -l . | wc -l)" -gt 0 ]; then \
+		echo "❌ 以下檔案需要格式化："; \
+		gofmt -s -l .; \
+		echo "請執行 'gofmt -s -w .' 或 'make fmt' 來格式化"; \
+		exit 1; \
+	fi
+	@echo "✓ gofmt 檢查通過！"
 	@echo "正在執行 golangci-lint..."
 	@if ! command -v golangci-lint > /dev/null 2>&1; then \
 		echo "❌ golangci-lint 未安裝"; \
@@ -113,7 +127,8 @@ help:
 	@echo "  make uninstall      - 從 ~/.claude/ 卸載所有檔案"
 	@echo "  make clean          - 清理編譯產物"
 	@echo "  make test           - 執行測試"
-	@echo "  make lint           - 執行 golangci-lint 檢查"
+	@echo "  make fmt            - 格式化程式碼 (gofmt)"
+	@echo "  make lint           - 執行程式碼檢查 (gofmt + golangci-lint)"
 	@echo "  make help           - 顯示此幫助訊息"
 	@echo ""
 	@echo "環境變數:"
