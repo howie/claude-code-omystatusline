@@ -28,11 +28,13 @@ type SoundConfig struct {
 
 // HookInput Claude Code Hook 輸入
 type HookInput struct {
-	Message        string `json:"message"`
-	HookEventName  string `json:"hook_event_name"`
-	SessionID      string `json:"session_id"`
-	TranscriptPath string `json:"transcript_path"`
-	Cwd            string `json:"cwd"`
+	Message        string                 `json:"message"`
+	HookEventName  string                 `json:"hook_event_name"`
+	SessionID      string                 `json:"session_id"`
+	TranscriptPath string                 `json:"transcript_path"`
+	Cwd            string                 `json:"cwd"`
+	ToolName       string                 `json:"tool_name"`        // PreToolUse/PostToolUse 專用
+	ToolInput      map[string]interface{} `json:"tool_input"`       // PreToolUse/PostToolUse 專用
 }
 
 // Stats 觸發統計
@@ -40,6 +42,7 @@ type Stats struct {
 	NotificationCount int       `json:"notification_count"`
 	StopCount         int       `json:"stop_count"`
 	SubagentStopCount int       `json:"subagent_stop_count"`
+	PreToolUseCount   int       `json:"pre_tool_use_count"`
 	LastTriggered     time.Time `json:"last_triggered"`
 }
 

@@ -3,6 +3,7 @@
 # 變數定義
 INSTALL_DIR = $(HOME)/.claude/omystatusline
 CLAUDE_DIR = $(HOME)/.claude
+OUTPUT_DIR = output
 BINARY_NAME = statusline-go
 VOICE_REMINDER_BINARY = voice-reminder
 CMD_SOURCE = cmd/statusline
@@ -24,14 +25,16 @@ all: build build-voice-reminder
 # 編譯 Go binary
 build:
 	@echo "正在編譯 $(BINARY_NAME)..."
-	@go build $(GOFLAGS) -o $(BINARY_NAME) ./$(CMD_SOURCE)
-	@echo "編譯完成: $(BINARY_NAME)"
+	@mkdir -p $(OUTPUT_DIR)
+	@go build $(GOFLAGS) -o $(OUTPUT_DIR)/$(BINARY_NAME) ./$(CMD_SOURCE)
+	@echo "編譯完成: $(OUTPUT_DIR)/$(BINARY_NAME)"
 
 # 編譯 voice-reminder binary
 build-voice-reminder:
 	@echo "正在編譯 $(VOICE_REMINDER_BINARY)..."
-	@go build $(GOFLAGS) -o $(VOICE_REMINDER_BINARY) ./$(VOICE_REMINDER_SOURCE)
-	@echo "編譯完成: $(VOICE_REMINDER_BINARY)"
+	@mkdir -p $(OUTPUT_DIR)
+	@go build $(GOFLAGS) -o $(OUTPUT_DIR)/$(VOICE_REMINDER_BINARY) ./$(VOICE_REMINDER_SOURCE)
+	@echo "編譯完成: $(OUTPUT_DIR)/$(VOICE_REMINDER_BINARY)"
 
 # 互動式安裝（推薦）
 install:
@@ -42,7 +45,7 @@ install-simple: build
 	@echo "正在安裝到 $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)/bin
 	@mkdir -p $(INSTALL_DIR)/scripts
-	@cp $(BINARY_NAME) $(INSTALL_DIR)/bin/$(BINARY_NAME)
+	@cp $(OUTPUT_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/bin/$(BINARY_NAME)
 	@cp $(WRAPPER_SCRIPT) $(INSTALL_DIR)/bin/statusline-wrapper.sh
 	@cp $(BASH_SCRIPT) $(INSTALL_DIR)/scripts/statusline.sh
 	@chmod +x $(INSTALL_DIR)/bin/$(BINARY_NAME)

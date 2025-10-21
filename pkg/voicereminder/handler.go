@@ -20,6 +20,8 @@ func SelectMessage(config *Config, input *HookInput) string {
 		return pickRandom(messages["stop"].Default)
 	case "SubagentStop":
 		return pickRandom(messages["subagent_stop"].Default)
+	case "PreToolUse":
+		return selectPreToolUseMessage(messages["pre_tool_use"], input)
 	default:
 		return "請注意"
 	}
@@ -46,6 +48,17 @@ func selectNotificationMessage(eventMsgs EventMessages, message string) string {
 
 	// 預設訊息
 	return pickRandom(eventMsgs.Default)
+}
+
+// selectPreToolUseMessage 根據 PreToolUse 事件選擇對應的語音
+func selectPreToolUseMessage(eventMsgs EventMessages, input *HookInput) string {
+	// 檢查是否為 AskUserQuestion 工具
+	if input.ToolName == "AskUserQuestion" {
+		return pickRandom(eventMsgs.Confirmation)
+	}
+
+	// 其他工具使用預設訊息（或靜默）
+	return ""
 }
 
 // pickRandom 從字串或字串陣列中隨機選擇一個
@@ -127,6 +140,8 @@ func UpdateStats(eventName string) error {
 		stats.StopCount++
 	case "SubagentStop":
 		stats.SubagentStopCount++
+	case "PreToolUse":
+		stats.PreToolUseCount++
 	}
 
 	// 寫回檔案

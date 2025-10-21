@@ -10,7 +10,6 @@
 [![Last Commit](https://img.shields.io/github/last-commit/howie/claude-code-omystatusline)](https://github.com/howie/claude-code-omystatusline/commits/main)
 
 > A rich, context-aware status line for Claude Code that keeps you informed about what really matters.
-> Testing voice reminder debug mode.
 
 **📢 Version 2.0**: New plugin architecture with organized directory structure! See [Migration Guide](MIGRATION.md) for upgrade instructions.
 
