@@ -48,3 +48,4 @@ go.work.sum
 # Build artifacts
 statusline-go
 /statusline-go
+tmp/
