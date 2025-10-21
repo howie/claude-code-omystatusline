@@ -88,13 +88,30 @@ All the information you need, updated with every interaction.
 
 ## Installation
 
-### Quick Install (Recommended)
+### Interactive Install (Recommended)
+
+The easiest way to install with optional audio notifications:
 
 ```bash
 make install
 ```
 
-Then add to your `~/.claude/config.json`:
+This will start an interactive installer that lets you:
+- ✅ Choose whether to install audio notifications
+- 🔊 Select system default sounds or custom audio files
+- 🗣️ Enable text-to-speech (TTS) voice announcements
+
+The installer will automatically configure your `~/.claude/config.json`.
+
+### Simple Install (Status Line Only)
+
+If you only want the status line without audio notifications:
+
+```bash
+make install-simple
+```
+
+Then manually add to your `~/.claude/config.json`:
 ```json
 {
   "statusLineCommand": "~/.claude/statusline-wrapper.sh"
@@ -204,13 +221,30 @@ Apache License 2.0 - customize freely!
 
 ## 安裝
 
-### 快速安裝（建議）
+### 互動式安裝（推薦）
+
+最簡單的安裝方式，可選擇性安裝音訊提醒功能：
 
 ```bash
 make install
 ```
 
-然後在你的 `~/.claude/config.json` 中加入：
+這會啟動互動式安裝程式，讓你可以：
+- ✅ 選擇是否要安裝音訊提醒功能
+- 🔊 選擇使用系統預設音效或自訂音訊檔案
+- 🗣️ 啟用語音播報（TTS）功能
+
+安裝程式會自動設定你的 `~/.claude/config.json`。
+
+### 簡單安裝（僅狀態列）
+
+如果你只想要狀態列功能，不需要音訊提醒：
+
+```bash
+make install-simple
+```
+
+然後手動在 `~/.claude/config.json` 中加入：
 ```json
 {
   "statusLineCommand": "~/.claude/statusline-wrapper.sh"
