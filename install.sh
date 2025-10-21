@@ -593,7 +593,7 @@ configure_claude_code() {
 {
   "statusLineCommand": "$INSTALL_DIR/$WRAPPER_SCRIPT",
   "hooks": {
-    "assistantMessageEnd": "$INSTALL_DIR/play-notification.sh"
+    "Notification": "$INSTALL_DIR/play-notification.sh"
   }
 }
 EOF
