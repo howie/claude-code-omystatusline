@@ -387,12 +387,14 @@ configure_audio_notifications() {
         echo ""
 
         # 詢問音訊類型
+        set +e  # 暫時禁用 set -e，因為 ask_choice 使用返回值傳遞選擇結果
         ask_choice "$(msg "audio_mode_q")" \
             "$(msg "audio_system")" \
             "$(msg "audio_custom")" \
             "$(msg "audio_tts")"
 
         AUDIO_TYPE=$?
+        set -e  # 重新啟用 set -e
 
         if [ $AUDIO_TYPE -eq 255 ]; then
             show_error "$(msg "invalid_using_default")"
