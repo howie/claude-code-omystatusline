@@ -27,7 +27,8 @@ fi
 # ============================================================================
 
 # 檢測需要確認的問題（優先級最高）
-if echo "$MESSAGE" | grep "?" > /dev/null || \
+# 支援中文問號（？）和英文問號（?）
+if echo "$MESSAGE" | grep -E "[?？]" > /dev/null || \
    echo "$MESSAGE" | grep -iE "permission|confirm|approve" > /dev/null; then
     if [[ "$OSTYPE" == "darwin"* ]]; then
         say "Claude 需要您的確認"

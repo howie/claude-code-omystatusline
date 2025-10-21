@@ -30,20 +30,23 @@ jobs:
 
     - name: Build binaries
       run: |
+        # Create dist directory
+        mkdir -p dist
+
         # Linux AMD64
-        GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-linux-amd64 statusline.go
+        GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-linux-amd64 ./cmd/statusline
 
         # Linux ARM64
-        GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/statusline-go-linux-arm64 statusline.go
+        GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/statusline-go-linux-arm64 ./cmd/statusline
 
         # macOS AMD64
-        GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-darwin-amd64 statusline.go
+        GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-darwin-amd64 ./cmd/statusline
 
         # macOS ARM64 (Apple Silicon)
-        GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/statusline-go-darwin-arm64 statusline.go
+        GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/statusline-go-darwin-arm64 ./cmd/statusline
 
         # Windows AMD64
-        GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-windows-amd64.exe statusline.go
+        GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/statusline-go-windows-amd64.exe ./cmd/statusline
 
         # Make binaries executable
         chmod +x dist/statusline-go-*

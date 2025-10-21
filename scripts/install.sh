@@ -572,7 +572,8 @@ if [ -z "\$MESSAGE" ]; then
 fi
 
 # 檢查是否需要使用者確認（問號 OR 關鍵字）
-if echo "\$MESSAGE" | grep "?" > /dev/null || \
+# 支援中文問號（？）和英文問號（?）
+if echo "\$MESSAGE" | grep -E "[?？]" > /dev/null || \
    echo "\$MESSAGE" | grep -iE "permission|confirm|approve" > /dev/null; then
     if [[ "\$OSTYPE" == "darwin"* ]]; then
         if [ "\$TTS_LANG" = "zh" ]; then
