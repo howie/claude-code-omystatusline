@@ -96,12 +96,15 @@ The easiest way to install with optional audio notifications:
 make install
 ```
 
-This will start an interactive installer that lets you:
-- ✅ Choose whether to install audio notifications
-- 🔊 Select system default sounds or custom audio files
-- 🗣️ Enable text-to-speech (TTS) voice announcements
+This will start an interactive installer with:
+- 🌏 **Language Selection**: Choose English or 繁體中文 (default: English)
+- ✅ **Audio Notifications**: Optional installation with three modes
+  - 🔊 System default sounds (recommended)
+  - 🎵 Custom audio file
+  - 🗣️ Text-to-speech (TTS)
+- ⚙️ **Auto Configuration**: Automatically sets up `~/.claude/config.json`
 
-The installer will automatically configure your `~/.claude/config.json`.
+The installer provides a friendly CLI experience in your preferred language.
 
 ### Simple Install (Status Line Only)
 
@@ -229,12 +232,15 @@ Apache License 2.0 - customize freely!
 make install
 ```
 
-這會啟動互動式安裝程式，讓你可以：
-- ✅ 選擇是否要安裝音訊提醒功能
-- 🔊 選擇使用系統預設音效或自訂音訊檔案
-- 🗣️ 啟用語音播報（TTS）功能
+這會啟動互動式安裝程式，提供：
+- 🌏 **語系選擇**：可選擇 English 或繁體中文（預設：English）
+- ✅ **音訊提醒**：可選擇安裝，提供三種模式
+  - 🔊 系統預設音效（推薦）
+  - 🎵 自訂音訊檔案
+  - 🗣️ 語音播報（TTS）
+- ⚙️ **自動設定**：自動設定 `~/.claude/config.json`
 
-安裝程式會自動設定你的 `~/.claude/config.json`。
+安裝程式提供友善的 CLI 介面，支援你偏好的語言。
 
 ### 簡單安裝（僅狀態列）
 
