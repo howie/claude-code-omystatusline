@@ -84,6 +84,7 @@ All the information you need, updated with every interaction.
 - ✅ **Session Time**: Daily accumulated time, multi-session detection
 - ✅ **User Message**: Last message displayed for quick context recall
 - ✅ **Performance**: Concurrent goroutines for sub-100ms status updates
+- 🔔 **Audio Notifications**: Play sounds when work needs attention (optional feature) - [Setup Guide](docs/features/audio-notifications/README.md)
 
 ## Installation
 
@@ -199,6 +200,7 @@ Apache License 2.0 - customize freely!
 - ✅ **Session 時間**：每日累積時間、多 session 偵測
 - ✅ **使用者訊息**：顯示最後一則訊息以快速回憶上下文
 - ✅ **效能**：並行 goroutine 讓狀態更新在 100ms 內完成
+- 🔔 **聲音提醒**：當工作需要介入時播放提示音（選用功能）- [設定指南](docs/features/audio-notifications/README.md)
 
 ## 安裝
 
