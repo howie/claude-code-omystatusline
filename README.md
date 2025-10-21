@@ -11,6 +11,8 @@
 
 > A rich, context-aware status line for Claude Code that keeps you informed about what really matters.
 
+**📢 Version 2.0**: New plugin architecture with organized directory structure! See [Migration Guide](MIGRATION.md) for upgrade instructions.
+
 [English](#english) | [中文](#chinese)
 
 ---
@@ -118,15 +120,56 @@ make install-simple
 Then manually add to your `~/.claude/config.json`:
 ```json
 {
-  "statusLineCommand": "~/.claude/scripts/statusline-wrapper.sh"
+  "statusLineCommand": "~/.claude/omystatusline/bin/statusline-wrapper.sh"
 }
 ```
-
-Note: The actual installation copies the wrapper to `~/.claude/statusline-wrapper.sh` for backward compatibility.
 
 ### Manual Installation
 
 See [Installation Guide](docs/installation.md) for detailed instructions.
+
+## Installation Directory Structure
+
+After installation, files are organized in `~/.claude/omystatusline/`:
+
+```
+~/.claude/
+├── omystatusline/                    # Main installation directory
+│   ├── bin/                          # Executables
+│   │   ├── statusline-go             # Status line binary
+│   │   └── statusline-wrapper.sh     # Wrapper script
+│   ├── scripts/                      # Helper scripts
+│   │   ├── statusline.sh            # Bash implementation
+│   │   └── play-notification.sh      # Audio notification script (optional)
+│   └── plugins/                      # Plugin directory
+│       └── voice-reminder/           # Voice reminder plugin
+│           ├── bin/
+│           │   └── voice-reminder    # Plugin binary
+│           ├── config/
+│           │   └── voice-reminder-config.json
+│           ├── scripts/
+│           │   ├── toggle-voice-reminder.sh
+│           │   └── test-voice-reminder.sh
+│           ├── data/                 # Runtime data
+│           │   ├── voice-reminder-enabled
+│           │   ├── voice-reminder-stats.json
+│           │   └── voice-reminder-debug.log
+│           └── commands/             # Slash command definitions
+│               ├── voice-reminder-on.md
+│               ├── voice-reminder-off.md
+│               ├── voice-reminder-stats.md
+│               └── voice-reminder-test.md
+├── commands/                         # Symlinks to plugin commands
+│   ├── voice-reminder-on.md -> ../omystatusline/plugins/voice-reminder/commands/voice-reminder-on.md
+│   └── ... (other command symlinks)
+└── config.json                       # Claude Code configuration
+```
+
+**Benefits of this structure:**
+- ✅ Clear separation from Claude Code's native files
+- ✅ Plugin architecture for future extensibility
+- ✅ Maintains compatibility with Claude Code's slash command system via symlinks
+- ✅ Easy to uninstall (just remove `~/.claude/omystatusline/`)
 
 ## How It Works
 
@@ -143,6 +186,26 @@ The status line receives JSON from Claude Code containing session metadata and o
 - Git
 - Claude Code CLI
 - Terminal with ANSI color support
+
+### Development Requirements
+
+If you want to contribute or run linting locally:
+
+```bash
+# macOS
+brew install golangci-lint
+
+# Linux
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+
+# Windows
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+Then run:
+```bash
+make lint
+```
 
 ## Contributing
 
@@ -256,13 +319,56 @@ make install-simple
 然後手動在 `~/.claude/config.json` 中加入：
 ```json
 {
-  "statusLineCommand": "~/.claude/statusline-wrapper.sh"
+  "statusLineCommand": "~/.claude/omystatusline/bin/statusline-wrapper.sh"
 }
 ```
 
 ### 手動安裝
 
 詳細說明請參閱[安裝指南](docs/installation.md)。
+
+## 安裝目錄結構
+
+安裝後，檔案會組織在 `~/.claude/omystatusline/` 目錄下：
+
+```
+~/.claude/
+├── omystatusline/                    # 主安裝目錄
+│   ├── bin/                          # 執行檔
+│   │   ├── statusline-go             # 狀態列 binary
+│   │   └── statusline-wrapper.sh     # Wrapper 腳本
+│   ├── scripts/                      # 輔助腳本
+│   │   ├── statusline.sh            # Bash 實作
+│   │   └── play-notification.sh      # 音訊提醒腳本（選用）
+│   └── plugins/                      # 插件目錄
+│       └── voice-reminder/           # 語音提醒插件
+│           ├── bin/
+│           │   └── voice-reminder    # 插件 binary
+│           ├── config/
+│           │   └── voice-reminder-config.json
+│           ├── scripts/
+│           │   ├── toggle-voice-reminder.sh
+│           │   └── test-voice-reminder.sh
+│           ├── data/                 # 運行時資料
+│           │   ├── voice-reminder-enabled
+│           │   ├── voice-reminder-stats.json
+│           │   └── voice-reminder-debug.log
+│           └── commands/             # Slash command 定義
+│               ├── voice-reminder-on.md
+│               ├── voice-reminder-off.md
+│               ├── voice-reminder-stats.md
+│               └── voice-reminder-test.md
+├── commands/                         # 指向插件 commands 的符號連結
+│   ├── voice-reminder-on.md -> ../omystatusline/plugins/voice-reminder/commands/voice-reminder-on.md
+│   └── ... (其他 command 符號連結)
+└── config.json                       # Claude Code 配置
+```
+
+**此結構的優點：**
+- ✅ 與 Claude Code 原生檔案清楚分離
+- ✅ 插件架構便於未來擴充
+- ✅ 透過符號連結維持與 Claude Code slash command 系統的相容性
+- ✅ 易於卸載（只需移除 `~/.claude/omystatusline/`）
 
 ## 運作原理
 
@@ -279,6 +385,26 @@ make install-simple
 - Git
 - Claude Code CLI
 - 支援 ANSI 色碼的終端機
+
+### 開發需求
+
+如果你想要貢獻程式碼或在本地執行 linting：
+
+```bash
+# macOS
+brew install golangci-lint
+
+# Linux
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+
+# Windows
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+執行 linting：
+```bash
+make lint
+```
 
 ## 貢獻
 

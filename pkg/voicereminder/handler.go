@@ -49,16 +49,16 @@ func selectNotificationMessage(eventMsgs EventMessages, message string) string {
 }
 
 // pickRandom 從字串或字串陣列中隨機選擇一個
-func pickRandom(v interface{}) string {
+func pickRandom(v any) string {
 	switch val := v.(type) {
 	case string:
 		return val
-	case []interface{}:
+	case []any:
 		if len(val) == 0 {
 			return ""
 		}
-		rand.Seed(time.Now().UnixNano())
-		idx := rand.Intn(len(val))
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		idx := r.Intn(len(val))
 		if str, ok := val[idx].(string); ok {
 			return str
 		}
@@ -95,13 +95,27 @@ func UpdateStats(eventName string) error {
 		return err
 	}
 
-	statsPath := filepath.Join(homeDir, ".claude", "voice-reminder-stats.json")
+	// 新路徑優先
+	newStatsPath := filepath.Join(homeDir, ".claude", "omystatusline", "plugins", "voice-reminder", "data", "voice-reminder-stats.json")
+	// 舊路徑作為備援
+	oldStatsPath := filepath.Join(homeDir, ".claude", "voice-reminder-stats.json")
+
+	var statsPath string
+
+	// 確保新路徑的目錄存在
+	newStatsDir := filepath.Join(homeDir, ".claude", "omystatusline", "plugins", "voice-reminder", "data")
+	if err := os.MkdirAll(newStatsDir, 0755); err == nil {
+		statsPath = newStatsPath
+	} else {
+		// 回退到舊路徑
+		statsPath = oldStatsPath
+	}
 
 	// 讀取現有統計
 	var stats Stats
 	data, err := os.ReadFile(statsPath)
 	if err == nil {
-		json.Unmarshal(data, &stats)
+		_ = json.Unmarshal(data, &stats)
 	}
 
 	// 更新統計

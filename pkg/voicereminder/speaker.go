@@ -96,7 +96,7 @@ func speakWithTimeout(command string, args []string, logger *Logger) error {
 	case <-time.After(SpeakTimeout):
 		// 超時，嘗試終止進程
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill()
 		}
 		if logger != nil {
 			logger.Log("⚠️ 語音播放超時 (%.0f 秒)，已終止進程", SpeakTimeout.Seconds())

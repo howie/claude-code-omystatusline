@@ -45,7 +45,7 @@ func calculateUsage(transcriptPath string) int {
 	if err != nil {
 		return 0
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// 讀取最後100行
 	scanner := bufio.NewScanner(file)

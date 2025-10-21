@@ -14,7 +14,8 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # 安裝目錄
-INSTALL_DIR="$HOME/.claude"
+INSTALL_DIR="$HOME/.claude/omystatusline"
+CLAUDE_DIR="$HOME/.claude"
 BINARY_NAME="statusline-go"
 WRAPPER_SCRIPT="statusline-wrapper.sh"
 BASH_SCRIPT="statusline.sh"
@@ -481,48 +482,59 @@ install_files() {
     echo -e "${BLUE}$(msg "step_install")${NC}"
     echo ""
 
-    # 建立目錄
+    # 建立目錄結構
     show_info "$(msg "creating_dir")"
-    mkdir -p "$INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR/bin"
+    mkdir -p "$INSTALL_DIR/scripts"
+    mkdir -p "$INSTALL_DIR/plugins/voice-reminder/bin"
+    mkdir -p "$INSTALL_DIR/plugins/voice-reminder/config"
+    mkdir -p "$INSTALL_DIR/plugins/voice-reminder/scripts"
+    mkdir -p "$INSTALL_DIR/plugins/voice-reminder/data"
+    mkdir -p "$INSTALL_DIR/plugins/voice-reminder/commands"
+    mkdir -p "$CLAUDE_DIR/commands"
     show_progress "$(msg "dir_created")"
 
-    # 複製主要檔案
+    # 複製 statusline 主要檔案
     show_info "$(msg "copying_files")"
-    cp "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
-    cp "scripts/$WRAPPER_SCRIPT" "$INSTALL_DIR/$WRAPPER_SCRIPT"
-    cp "scripts/$BASH_SCRIPT" "$INSTALL_DIR/$BASH_SCRIPT"
+    cp "$BINARY_NAME" "$INSTALL_DIR/bin/$BINARY_NAME"
+    cp "scripts/$WRAPPER_SCRIPT" "$INSTALL_DIR/bin/$WRAPPER_SCRIPT"
+    cp "scripts/$BASH_SCRIPT" "$INSTALL_DIR/scripts/$BASH_SCRIPT"
 
-    chmod +x "$INSTALL_DIR/$BINARY_NAME"
-    chmod +x "$INSTALL_DIR/$WRAPPER_SCRIPT"
-    chmod +x "$INSTALL_DIR/$BASH_SCRIPT"
+    chmod +x "$INSTALL_DIR/bin/$BINARY_NAME"
+    chmod +x "$INSTALL_DIR/bin/$WRAPPER_SCRIPT"
+    chmod +x "$INSTALL_DIR/scripts/$BASH_SCRIPT"
 
     show_progress "$(msg "files_installed")"
 
-    # 安裝 voice-reminder
-    show_info "正在安裝 voice-reminder..."
-    cp "voice-reminder" "$INSTALL_DIR/voice-reminder"
-    chmod +x "$INSTALL_DIR/voice-reminder"
+    # 安裝 voice-reminder plugin
+    show_info "正在安裝 voice-reminder plugin..."
+    cp "voice-reminder" "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
+    chmod +x "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
 
     # 複製配置檔案（如果不存在）
-    if [ ! -f "$INSTALL_DIR/voice-reminder-config.json" ]; then
-        cp "configs/voice-reminder-config.json" "$INSTALL_DIR/voice-reminder-config.json"
+    if [ ! -f "$INSTALL_DIR/plugins/voice-reminder/config/voice-reminder-config.json" ]; then
+        cp "configs/voice-reminder-config.json" "$INSTALL_DIR/plugins/voice-reminder/config/voice-reminder-config.json"
     fi
 
-    # 創建 scripts 目錄並複製相關腳本
-    mkdir -p "$INSTALL_DIR/scripts"
-    cp "scripts/toggle-voice-reminder.sh" "$INSTALL_DIR/scripts/"
-    cp "scripts/test-voice-reminder.sh" "$INSTALL_DIR/scripts/"
-    chmod +x "$INSTALL_DIR/scripts/toggle-voice-reminder.sh"
-    chmod +x "$INSTALL_DIR/scripts/test-voice-reminder.sh"
+    # 複製 voice-reminder 腳本
+    cp "scripts/toggle-voice-reminder.sh" "$INSTALL_DIR/plugins/voice-reminder/scripts/"
+    cp "scripts/test-voice-reminder.sh" "$INSTALL_DIR/plugins/voice-reminder/scripts/"
+    chmod +x "$INSTALL_DIR/plugins/voice-reminder/scripts/toggle-voice-reminder.sh"
+    chmod +x "$INSTALL_DIR/plugins/voice-reminder/scripts/test-voice-reminder.sh"
 
-    # 創建 commands 目錄並複製 slash commands
-    mkdir -p "$INSTALL_DIR/commands"
-    cp .claude/commands/voice-reminder-*.md "$INSTALL_DIR/commands/"
+    # 複製 slash commands 並建立符號連結
+    cp .claude/commands/voice-reminder-*.md "$INSTALL_DIR/plugins/voice-reminder/commands/"
+
+    # 建立符號連結到 ~/.claude/commands/
+    for cmd_file in .claude/commands/voice-reminder-*.md; do
+        cmd_name=$(basename "$cmd_file")
+        ln -sf "$INSTALL_DIR/plugins/voice-reminder/commands/$cmd_name" "$CLAUDE_DIR/commands/$cmd_name"
+    done
 
     # 預設啟用 voice-reminder
-    echo "true" > "$INSTALL_DIR/voice-reminder-enabled"
+    echo "true" > "$INSTALL_DIR/plugins/voice-reminder/data/voice-reminder-enabled"
 
-    show_progress "voice-reminder 已安裝"
+    show_progress "voice-reminder plugin 已安裝"
 
     # 安裝音訊提醒
     if [ "$INSTALL_AUDIO" = true ]; then
@@ -530,7 +542,7 @@ install_files() {
 
         case $AUDIO_TYPE in
             0)  # 系統預設音效
-                cat > "$INSTALL_DIR/play-notification.sh" << 'EOF'
+                cat > "$INSTALL_DIR/scripts/play-notification.sh" << 'EOF'
 #!/bin/bash
 
 # 根據作業系統選擇音訊播放工具
@@ -556,14 +568,14 @@ EOF
 
             1)  # 自訂音訊檔案
                 if [ -n "$CUSTOM_SOUND_PATH" ]; then
-                    # 複製自訂音訊到 .claude 目錄
-                    cp "$CUSTOM_SOUND_PATH" "$INSTALL_DIR/notification-sound$(basename "$CUSTOM_SOUND_PATH" | sed 's/.*\(\.[^.]*\)$/\1/')"
-                    SOUND_FILE="$INSTALL_DIR/notification-sound$(basename "$CUSTOM_SOUND_PATH" | sed 's/.*\(\.[^.]*\)$/\1/')"
+                    # 複製自訂音訊到 omystatusline 目錄
+                    cp "$CUSTOM_SOUND_PATH" "$INSTALL_DIR/scripts/notification-sound$(basename "$CUSTOM_SOUND_PATH" | sed 's/.*\(\.[^.]*\)$/\1/')"
+                    SOUND_FILE="$INSTALL_DIR/scripts/notification-sound$(basename "$CUSTOM_SOUND_PATH" | sed 's/.*\(\.[^.]*\)$/\1/')"
                 else
-                    SOUND_FILE="$HOME/.claude/notification.mp3"
+                    SOUND_FILE="$INSTALL_DIR/scripts/notification.mp3"
                 fi
 
-                cat > "$INSTALL_DIR/play-notification.sh" << EOF
+                cat > "$INSTALL_DIR/scripts/play-notification.sh" << EOF
 #!/bin/bash
 
 SOUND_FILE="$SOUND_FILE"
@@ -584,7 +596,7 @@ EOF
                 ;;
 
             2)  # 語音播報
-                cat > "$INSTALL_DIR/play-notification.sh" << EOF
+                cat > "$INSTALL_DIR/scripts/play-notification.sh" << EOF
 #!/bin/bash
 
 # TTS Language Setting (set during installation)
@@ -671,12 +683,12 @@ EOF
                 ;;
         esac
 
-        chmod +x "$INSTALL_DIR/play-notification.sh"
+        chmod +x "$INSTALL_DIR/scripts/play-notification.sh"
 
         # 如果是 TTS 模式，提供測試選項
         if [ $AUDIO_TYPE -eq 2 ]; then
             echo ""
-            test_tts_notification "$INSTALL_DIR/play-notification.sh"
+            test_tts_notification "$INSTALL_DIR/scripts/play-notification.sh"
         fi
     fi
 
@@ -692,7 +704,7 @@ configure_claude_code() {
     echo -e "${BLUE}$(msg "step_config")${NC}"
     echo ""
 
-    CONFIG_FILE="$INSTALL_DIR/config.json"
+    CONFIG_FILE="$CLAUDE_DIR/config.json"
 
     # 讀取現有設定
     if [ -f "$CONFIG_FILE" ]; then
@@ -719,7 +731,7 @@ configure_claude_code() {
             # 包含 voice-reminder 的設定（支援三個 hook 事件）
             cat > "$CONFIG_FILE" << EOF
 {
-  "statusLineCommand": "$INSTALL_DIR/$WRAPPER_SCRIPT",
+  "statusLineCommand": "$INSTALL_DIR/bin/$WRAPPER_SCRIPT",
   "hooks": {
     "Notification": [
       {
@@ -727,7 +739,7 @@ configure_claude_code() {
         "hooks": [
           {
             "type": "command",
-            "command": "$INSTALL_DIR/voice-reminder"
+            "command": "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
           }
         ]
       }
@@ -738,7 +750,7 @@ configure_claude_code() {
         "hooks": [
           {
             "type": "command",
-            "command": "$INSTALL_DIR/voice-reminder"
+            "command": "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
           }
         ]
       }
@@ -749,7 +761,7 @@ configure_claude_code() {
         "hooks": [
           {
             "type": "command",
-            "command": "$INSTALL_DIR/voice-reminder"
+            "command": "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
           }
         ]
       }
@@ -762,7 +774,7 @@ EOF
             # 僅狀態列設定
             cat > "$CONFIG_FILE" << EOF
 {
-  "statusLineCommand": "$INSTALL_DIR/$WRAPPER_SCRIPT"
+  "statusLineCommand": "$INSTALL_DIR/bin/$WRAPPER_SCRIPT"
 }
 EOF
             show_progress "$(msg "config_statusline")"
@@ -784,12 +796,13 @@ show_summary() {
     echo ""
 
     echo -e "${BLUE}$(msg "installed_files")${NC}"
-    echo "  ✓ $INSTALL_DIR/$BINARY_NAME"
-    echo "  ✓ $INSTALL_DIR/$WRAPPER_SCRIPT"
-    echo "  ✓ $INSTALL_DIR/$BASH_SCRIPT"
+    echo "  ✓ $INSTALL_DIR/bin/$BINARY_NAME"
+    echo "  ✓ $INSTALL_DIR/bin/$WRAPPER_SCRIPT"
+    echo "  ✓ $INSTALL_DIR/scripts/$BASH_SCRIPT"
+    echo "  ✓ $INSTALL_DIR/plugins/voice-reminder/"
 
     if [ "$INSTALL_AUDIO" = true ]; then
-        echo "  ✓ $INSTALL_DIR/play-notification.sh"
+        echo "  ✓ $INSTALL_DIR/scripts/play-notification.sh"
         case $AUDIO_TYPE in
             0) echo "     $(msg "using_system_sound")" ;;
             1) echo "     $(msg "using_custom_sound")" ;;
@@ -799,7 +812,7 @@ show_summary() {
 
     echo ""
     echo -e "${BLUE}$(msg "config_location")${NC}"
-    echo "  ✓ $INSTALL_DIR/config.json"
+    echo "  ✓ $CLAUDE_DIR/config.json"
 
     echo ""
     echo -e "${YELLOW}$(msg "next_steps")${NC}"
@@ -810,7 +823,7 @@ show_summary() {
         echo "  $(msg "next_3")"
         echo ""
         echo -e "${CYAN}$(msg "test_audio")${NC}"
-        echo "  $INSTALL_DIR/play-notification.sh"
+        echo "  $INSTALL_DIR/scripts/play-notification.sh"
     fi
 
     echo ""

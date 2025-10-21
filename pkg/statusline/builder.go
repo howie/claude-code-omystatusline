@@ -37,7 +37,7 @@ func ExtractUserMessage(transcriptPath, sessionID string) string {
 	if err != nil {
 		return ""
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// 讀取最後200行
 	scanner := bufio.NewScanner(file)

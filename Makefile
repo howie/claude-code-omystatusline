@@ -1,7 +1,8 @@
 # Makefile for Claude Code Statusline
 
 # 變數定義
-INSTALL_DIR = $(HOME)/.claude
+INSTALL_DIR = $(HOME)/.claude/omystatusline
+CLAUDE_DIR = $(HOME)/.claude
 BINARY_NAME = statusline-go
 VOICE_REMINDER_BINARY = voice-reminder
 CMD_SOURCE = cmd/statusline
@@ -15,7 +16,7 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOFLAGS = -ldflags="-s -w"
 
-.PHONY: all build build-voice-reminder install install-simple uninstall clean test install-hooks uninstall-hooks help
+.PHONY: all build build-voice-reminder install install-simple uninstall clean test lint install-hooks uninstall-hooks help
 
 # 預設目標
 all: build build-voice-reminder
@@ -39,34 +40,29 @@ install:
 # 簡單安裝（不含音訊提醒）
 install-simple: build
 	@echo "正在安裝到 $(INSTALL_DIR)..."
-	@mkdir -p $(INSTALL_DIR)
-	@cp $(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
-	@cp $(WRAPPER_SCRIPT) $(INSTALL_DIR)/statusline-wrapper.sh
-	@cp $(BASH_SCRIPT) $(INSTALL_DIR)/statusline.sh
-	@chmod +x $(INSTALL_DIR)/$(BINARY_NAME)
-	@chmod +x $(INSTALL_DIR)/statusline-wrapper.sh
-	@chmod +x $(INSTALL_DIR)/statusline.sh
+	@mkdir -p $(INSTALL_DIR)/bin
+	@mkdir -p $(INSTALL_DIR)/scripts
+	@cp $(BINARY_NAME) $(INSTALL_DIR)/bin/$(BINARY_NAME)
+	@cp $(WRAPPER_SCRIPT) $(INSTALL_DIR)/bin/statusline-wrapper.sh
+	@cp $(BASH_SCRIPT) $(INSTALL_DIR)/scripts/statusline.sh
+	@chmod +x $(INSTALL_DIR)/bin/$(BINARY_NAME)
+	@chmod +x $(INSTALL_DIR)/bin/statusline-wrapper.sh
+	@chmod +x $(INSTALL_DIR)/scripts/statusline.sh
 	@echo "✓ 安裝完成！"
 	@echo "已安裝檔案："
-	@echo "  - $(INSTALL_DIR)/$(BINARY_NAME)"
-	@echo "  - $(INSTALL_DIR)/statusline-wrapper.sh"
-	@echo "  - $(INSTALL_DIR)/statusline.sh"
+	@echo "  - $(INSTALL_DIR)/bin/$(BINARY_NAME)"
+	@echo "  - $(INSTALL_DIR)/bin/statusline-wrapper.sh"
+	@echo "  - $(INSTALL_DIR)/scripts/statusline.sh"
 	@echo ""
 	@echo "提示：使用 'make install' 進行互動式安裝，可設定音訊提醒功能"
 
 # 卸載
 uninstall:
 	@echo "正在卸載..."
-	@rm -f $(INSTALL_DIR)/$(BINARY_NAME)
-	@rm -f $(INSTALL_DIR)/$(WRAPPER_SCRIPT)
-	@rm -f $(INSTALL_DIR)/$(BASH_SCRIPT)
-	@rm -f $(INSTALL_DIR)/$(VOICE_REMINDER_BINARY)
-	@rm -f $(INSTALL_DIR)/voice-reminder-config.json
-	@rm -f $(INSTALL_DIR)/voice-reminder-enabled
-	@rm -rf $(INSTALL_DIR)/scripts
-	@rm -rf $(INSTALL_DIR)/commands
-	@rm -f $(INSTALL_DIR)/play-notification.sh
+	@rm -rf $(INSTALL_DIR)
+	@rm -f $(CLAUDE_DIR)/commands/voice-reminder-*.md
 	@echo "✓ 卸載完成！"
+	@echo "提示：如需完全清理，請手動檢查 $(CLAUDE_DIR)/config.json"
 
 # 清理編譯產物
 clean:
@@ -80,6 +76,19 @@ test:
 	@echo "正在執行測試..."
 	@go test -v ./...
 	@echo "✓ 測試完成！"
+
+# 執行 linting
+lint:
+	@echo "正在執行 golangci-lint..."
+	@if ! command -v golangci-lint > /dev/null 2>&1; then \
+		echo "❌ golangci-lint 未安裝"; \
+		echo "請執行以下命令安裝："; \
+		echo "  brew install golangci-lint  # macOS"; \
+		echo "  或訪問 https://golangci-lint.run/usage/install/"; \
+		exit 1; \
+	fi
+	@golangci-lint run --timeout=5m
+	@echo "✓ Linting 完成！"
 
 # 安裝 Git hooks
 install-hooks:
@@ -103,6 +112,8 @@ help:
 	@echo "  make install-simple - 簡單安裝（僅狀態列，不含音訊提醒）"
 	@echo "  make uninstall      - 從 ~/.claude/ 卸載所有檔案"
 	@echo "  make clean          - 清理編譯產物"
+	@echo "  make test           - 執行測試"
+	@echo "  make lint           - 執行 golangci-lint 檢查"
 	@echo "  make help           - 顯示此幫助訊息"
 	@echo ""
 	@echo "環境變數:"

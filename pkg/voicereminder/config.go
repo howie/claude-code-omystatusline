@@ -13,9 +13,26 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
-	configPath := filepath.Join(homeDir, ".claude", "voice-reminder-config.json")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
+	// 新路徑優先
+	newConfigPath := filepath.Join(homeDir, ".claude", "omystatusline", "plugins", "voice-reminder", "config", "voice-reminder-config.json")
+	// 舊路徑作為備援
+	oldConfigPath := filepath.Join(homeDir, ".claude", "voice-reminder-config.json")
+
+	var data []byte
+
+	// 先嘗試新路徑
+	if _, err := os.Stat(newConfigPath); err == nil {
+		data, err = os.ReadFile(newConfigPath)
+		if err != nil {
+			return getDefaultConfig(), nil
+		}
+	} else if _, err := os.Stat(oldConfigPath); err == nil {
+		// 回退到舊路徑
+		data, err = os.ReadFile(oldConfigPath)
+		if err != nil {
+			return getDefaultConfig(), nil
+		}
+	} else {
 		return getDefaultConfig(), nil // 如果配置不存在，使用預設配置
 	}
 
@@ -34,13 +51,30 @@ func IsEnabled() bool {
 		return false
 	}
 
-	enabledPath := filepath.Join(homeDir, ".claude", "voice-reminder-enabled")
-	data, err := os.ReadFile(enabledPath)
-	if err != nil {
-		return true // 預設啟用
+	// 新路徑優先
+	newEnabledPath := filepath.Join(homeDir, ".claude", "omystatusline", "plugins", "voice-reminder", "data", "voice-reminder-enabled")
+	// 舊路徑作為備援
+	oldEnabledPath := filepath.Join(homeDir, ".claude", "voice-reminder-enabled")
+
+	// 先嘗試新路徑
+	if _, err := os.Stat(newEnabledPath); err == nil {
+		data, err := os.ReadFile(newEnabledPath)
+		if err != nil {
+			return true // 讀取失敗，預設啟用
+		}
+		return string(data) == "true" || string(data) == "true\n"
 	}
 
-	return string(data) == "true" || string(data) == "true\n"
+	// 回退到舊路徑
+	if _, err := os.Stat(oldEnabledPath); err == nil {
+		data, err := os.ReadFile(oldEnabledPath)
+		if err != nil {
+			return true // 讀取失敗，預設啟用
+		}
+		return string(data) == "true" || string(data) == "true\n"
+	}
+
+	return true // 預設啟用
 }
 
 // getDefaultConfig 返回預設配置
