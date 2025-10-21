@@ -31,7 +31,7 @@ The default Claude Code interface doesn't surface this critical information. You
 
 ## Inspiration
 
-This project was inspired by the powerful status lines in tools like:
+This project was inspired by [jackle.pro's article on Claude Code status line](https://jackle.pro/articles/claude-code-status-line) and the powerful status lines in tools like:
 - **Vim/Neovim** - Where the status line shows mode, file info, cursor position, and git status at a glance
 - **tmux/zsh prompt** - Rich terminal status lines that display git branches, execution time, and context
 - **IDE status bars** - Like VS Code's integrated git status, branch info, and diagnostic counts
@@ -170,7 +170,7 @@ Apache License 2.0 - customize freely!
 
 ## 靈感來源
 
-這個專案的靈感來自於以下工具強大的狀態列：
+這個專案的靈感來自於 [jackle.pro 關於 Claude Code 狀態列的文章](https://jackle.pro/articles/claude-code-status-line)以及以下工具強大的狀態列：
 - **Vim/Neovim** - 狀態列顯示模式、檔案資訊、游標位置和 git 狀態
 - **tmux/zsh prompt** - 豐富的終端機狀態列，顯示 git 分支、執行時間和上下文
 - **IDE 狀態列** - 如 VS Code 整合的 git 狀態、分支資訊和診斷計數
