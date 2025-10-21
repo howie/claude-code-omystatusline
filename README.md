@@ -84,16 +84,37 @@ All the information you need, updated with every interaction.
 - ✅ **Session Time**: Daily accumulated time, multi-session detection
 - ✅ **User Message**: Last message displayed for quick context recall
 - ✅ **Performance**: Concurrent goroutines for sub-100ms status updates
+- 🔔 **Audio Notifications**: Play sounds when work needs attention (optional feature) - [Setup Guide](docs/features/audio-notifications/README.md)
 
 ## Installation
 
-### Quick Install (Recommended)
+### Interactive Install (Recommended)
+
+The easiest way to install with optional audio notifications:
 
 ```bash
 make install
 ```
 
-Then add to your `~/.claude/config.json`:
+This will start an interactive installer with:
+- 🌏 **Language Selection**: Choose English or 繁體中文 (default: English)
+- ✅ **Audio Notifications**: Optional installation with three modes
+  - 🔊 System default sounds (recommended)
+  - 🎵 Custom audio file
+  - 🗣️ Text-to-speech (TTS)
+- ⚙️ **Auto Configuration**: Automatically sets up `~/.claude/config.json`
+
+The installer provides a friendly CLI experience in your preferred language.
+
+### Simple Install (Status Line Only)
+
+If you only want the status line without audio notifications:
+
+```bash
+make install-simple
+```
+
+Then manually add to your `~/.claude/config.json`:
 ```json
 {
   "statusLineCommand": "~/.claude/statusline-wrapper.sh"
@@ -199,16 +220,37 @@ Apache License 2.0 - customize freely!
 - ✅ **Session 時間**：每日累積時間、多 session 偵測
 - ✅ **使用者訊息**：顯示最後一則訊息以快速回憶上下文
 - ✅ **效能**：並行 goroutine 讓狀態更新在 100ms 內完成
+- 🔔 **聲音提醒**：當工作需要介入時播放提示音（選用功能）- [設定指南](docs/features/audio-notifications/README.md)
 
 ## 安裝
 
-### 快速安裝（建議）
+### 互動式安裝（推薦）
+
+最簡單的安裝方式，可選擇性安裝音訊提醒功能：
 
 ```bash
 make install
 ```
 
-然後在你的 `~/.claude/config.json` 中加入：
+這會啟動互動式安裝程式，提供：
+- 🌏 **語系選擇**：可選擇 English 或繁體中文（預設：English）
+- ✅ **音訊提醒**：可選擇安裝，提供三種模式
+  - 🔊 系統預設音效（推薦）
+  - 🎵 自訂音訊檔案
+  - 🗣️ 語音播報（TTS）
+- ⚙️ **自動設定**：自動設定 `~/.claude/config.json`
+
+安裝程式提供友善的 CLI 介面，支援你偏好的語言。
+
+### 簡單安裝（僅狀態列）
+
+如果你只想要狀態列功能，不需要音訊提醒：
+
+```bash
+make install-simple
+```
+
+然後手動在 `~/.claude/config.json` 中加入：
 ```json
 {
   "statusLineCommand": "~/.claude/statusline-wrapper.sh"

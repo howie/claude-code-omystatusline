@@ -6,13 +6,14 @@ BINARY_NAME = statusline-go
 GO_SOURCE = statusline.go
 WRAPPER_SCRIPT = statusline-wrapper.sh
 BASH_SCRIPT = statusline.sh
+INSTALL_SCRIPT = install.sh
 
 # Go 編譯選項
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOFLAGS = -ldflags="-s -w"
 
-.PHONY: all build install uninstall clean help
+.PHONY: all build install install-interactive install-simple uninstall clean help
 
 # 預設目標
 all: build
@@ -23,8 +24,12 @@ build:
 	@go build $(GOFLAGS) -o $(BINARY_NAME) $(GO_SOURCE)
 	@echo "編譯完成: $(BINARY_NAME)"
 
-# 安裝到 ~/.claude/
-install: build
+# 互動式安裝（推薦）
+install:
+	@./$(INSTALL_SCRIPT)
+
+# 簡單安裝（不含音訊提醒）
+install-simple: build
 	@echo "正在安裝到 $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
 	@cp $(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
@@ -38,6 +43,8 @@ install: build
 	@echo "  - $(INSTALL_DIR)/$(BINARY_NAME)"
 	@echo "  - $(INSTALL_DIR)/$(WRAPPER_SCRIPT)"
 	@echo "  - $(INSTALL_DIR)/$(BASH_SCRIPT)"
+	@echo ""
+	@echo "提示：使用 'make install' 進行互動式安裝，可設定音訊提醒功能"
 
 # 卸載
 uninstall:
@@ -58,12 +65,16 @@ help:
 	@echo "Claude Code Statusline - Makefile 使用說明"
 	@echo ""
 	@echo "可用的 targets:"
-	@echo "  make build      - 編譯 Go binary"
-	@echo "  make install    - 編譯並安裝所有檔案到 ~/.claude/"
-	@echo "  make uninstall  - 從 ~/.claude/ 卸載所有檔案"
-	@echo "  make clean      - 清理編譯產物"
-	@echo "  make help       - 顯示此幫助訊息"
+	@echo "  make build          - 編譯 Go binary"
+	@echo "  make install        - 互動式安裝（推薦，包含音訊提醒設定）"
+	@echo "  make install-simple - 簡單安裝（僅狀態列，不含音訊提醒）"
+	@echo "  make uninstall      - 從 ~/.claude/ 卸載所有檔案"
+	@echo "  make clean          - 清理編譯產物"
+	@echo "  make help           - 顯示此幫助訊息"
 	@echo ""
 	@echo "環境變數:"
-	@echo "  GOOS            - 目標作業系統 (預設: $(GOOS))"
-	@echo "  GOARCH          - 目標架構 (預設: $(GOARCH))"
+	@echo "  GOOS                - 目標作業系統 (預設: $(GOOS))"
+	@echo "  GOARCH              - 目標架構 (預設: $(GOARCH))"
+	@echo ""
+	@echo "推薦使用互動式安裝："
+	@echo "  make install"
