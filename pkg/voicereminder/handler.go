@@ -21,7 +21,7 @@ func SelectMessage(config *Config, input *HookInput) string {
 	case "SubagentStop":
 		return pickRandom(messages["subagent_stop"].Default)
 	case "PreToolUse":
-		return selectPreToolUseMessage(messages["pre_tool_use"], input)
+		return selectPreToolUseMessage(messages["pre_tool_use"], input, config)
 	default:
 		return "請注意"
 	}
@@ -51,13 +51,35 @@ func selectNotificationMessage(eventMsgs EventMessages, message string) string {
 }
 
 // selectPreToolUseMessage 根據 PreToolUse 事件選擇對應的語音
-func selectPreToolUseMessage(eventMsgs EventMessages, input *HookInput) string {
-	// 檢查是否為 AskUserQuestion 工具
-	if input.ToolName == "AskUserQuestion" {
-		return pickRandom(eventMsgs.Confirmation)
+func selectPreToolUseMessage(eventMsgs EventMessages, input *HookInput, config *Config) string {
+	// 如果過濾器未啟用，使用舊邏輯（只提醒 AskUserQuestion）
+	if !config.PreToolUseFilters.Enabled {
+		if input.ToolName == "AskUserQuestion" {
+			return pickRandom(eventMsgs.Confirmation)
+		}
+		return ""
 	}
 
-	// 其他工具使用預設訊息（或靜默）
+	// 檢查是否在忽略列表中
+	for _, ignoreTool := range config.PreToolUseFilters.IgnoreTools {
+		if input.ToolName == ignoreTool {
+			return "" // 靜默
+		}
+	}
+
+	// 檢查是否在通知列表中
+	for _, notifyTool := range config.PreToolUseFilters.NotifyTools {
+		if input.ToolName == notifyTool {
+			// 根據工具類型選擇訊息
+			if input.ToolName == "AskUserQuestion" {
+				return pickRandom(eventMsgs.Confirmation)
+			}
+			// 其他需要通知的工具使用預設訊息
+			return pickRandom(eventMsgs.Default)
+		}
+	}
+
+	// 不在任何列表中，使用預設行為（靜默）
 	return ""
 }
 

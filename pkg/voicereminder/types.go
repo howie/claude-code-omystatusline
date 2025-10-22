@@ -4,12 +4,13 @@ import "time"
 
 // Config 語音提醒配置
 type Config struct {
-	DebugMode    bool                     `json:"debug_mode"`
-	Language     string                   `json:"language"`
-	Speed        int                      `json:"speed"`
-	Messages     map[string]EventMessages `json:"messages"`
-	MessagesEN   map[string]EventMessages `json:"messages_en"`
-	SoundEffects SoundConfig              `json:"sound_effects"`
+	DebugMode         bool                     `json:"debug_mode"`
+	Language          string                   `json:"language"`
+	Speed             int                      `json:"speed"`
+	Messages          map[string]EventMessages `json:"messages"`
+	MessagesEN        map[string]EventMessages `json:"messages_en"`
+	SoundEffects      SoundConfig              `json:"sound_effects"`
+	PreToolUseFilters PreToolUseFilters        `json:"pre_tool_use_filters"`
 }
 
 // EventMessages 事件訊息配置
@@ -26,6 +27,13 @@ type SoundConfig struct {
 	FallbackSound string `json:"fallback_sound"`
 }
 
+// PreToolUseFilters PreToolUse 工具過濾配置
+type PreToolUseFilters struct {
+	Enabled     bool     `json:"enabled"`
+	NotifyTools []string `json:"notify_tools"`
+	IgnoreTools []string `json:"ignore_tools"`
+}
+
 // HookInput Claude Code Hook 輸入
 type HookInput struct {
 	Message        string                 `json:"message"`
@@ -33,8 +41,8 @@ type HookInput struct {
 	SessionID      string                 `json:"session_id"`
 	TranscriptPath string                 `json:"transcript_path"`
 	Cwd            string                 `json:"cwd"`
-	ToolName       string                 `json:"tool_name"`        // PreToolUse/PostToolUse 專用
-	ToolInput      map[string]interface{} `json:"tool_input"`       // PreToolUse/PostToolUse 專用
+	ToolName       string                 `json:"tool_name"`  // PreToolUse/PostToolUse 專用
+	ToolInput      map[string]interface{} `json:"tool_input"` // PreToolUse/PostToolUse 專用
 }
 
 // Stats 觸發統計
