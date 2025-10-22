@@ -76,13 +76,14 @@ print_info "檢查 2/5: Go 代碼編譯"
 if ! command -v go &> /dev/null; then
     print_warning "未找到 Go，跳過編譯檢查"
 else
-    if go build -o /tmp/statusline-test statusline.go 2>&1; then
+    if make build &> /tmp/build-output.log; then
         print_success "Go 代碼編譯成功"
-        rm -f /tmp/statusline-test
     else
         print_error "Go 代碼編譯失敗"
+        cat /tmp/build-output.log
         FAILED_CHECKS=$((FAILED_CHECKS + 1))
     fi
+    rm -f /tmp/build-output.log
 fi
 
 echo ""
@@ -94,15 +95,15 @@ print_info "檢查 3/5: Go 測試執行"
 
 if ! command -v go &> /dev/null; then
     print_warning "未找到 Go，跳過測試"
-elif [ ! -f "statusline_test.go" ]; then
-    print_warning "未找到測試文件，跳過測試"
 else
-    if go test -v ./... 2>&1 | grep -E "PASS|FAIL"; then
+    if make test &> /tmp/test-output.log; then
         print_success "Go 測試通過"
     else
         print_error "Go 測試失敗"
+        cat /tmp/test-output.log
         FAILED_CHECKS=$((FAILED_CHECKS + 1))
     fi
+    rm -f /tmp/test-output.log
 fi
 
 echo ""
@@ -112,7 +113,7 @@ echo ""
 # ============================================================================
 print_info "檢查 4/5: Shell 腳本語法檢查"
 
-SHELL_SCRIPTS=("install.sh" "statusline-wrapper.sh" "statusline.sh")
+SHELL_SCRIPTS=("scripts/install.sh" "scripts/statusline-wrapper.sh" "scripts/statusline.sh")
 SHELL_CHECK_FAILED=0
 
 for script in "${SHELL_SCRIPTS[@]}"; do
@@ -135,22 +136,18 @@ echo ""
 # ============================================================================
 # 檢查 5: 安裝腳本測試（乾跑）
 # ============================================================================
-print_info "檢查 5/5: 安裝腳本乾跑測試"
+print_info "檢查 5/5: 安裝腳本語法檢查"
 
-if [ -f "install.sh" ]; then
-    # 檢查是否有 statusline.go（安裝腳本需要）
-    if [ -f "statusline.go" ]; then
-        # 測試腳本的開頭部分（不實際執行安裝）
-        if bash -c 'source install.sh 2>&1 | head -1' &> /dev/null; then
-            print_success "安裝腳本載入測試通過"
-        else
-            print_warning "安裝腳本載入測試失敗（這可能是正常的）"
-        fi
+if [ -f "scripts/install.sh" ]; then
+    # 檢查腳本語法
+    if bash -n "scripts/install.sh" 2>&1; then
+        print_success "安裝腳本語法正確"
     else
-        print_warning "未找到 statusline.go，跳過安裝腳本測試"
+        print_error "安裝腳本語法錯誤"
+        FAILED_CHECKS=$((FAILED_CHECKS + 1))
     fi
 else
-    print_warning "未找到 install.sh"
+    print_warning "未找到 scripts/install.sh"
 fi
 
 echo ""
