@@ -37,7 +37,7 @@ build-voice-reminder:
 	@echo "編譯完成: $(OUTPUT_DIR)/$(VOICE_REMINDER_BINARY)"
 
 # 互動式安裝（推薦）
-install:
+install: all
 	@./$(INSTALL_SCRIPT)
 
 # 簡單安裝（不含音訊提醒）

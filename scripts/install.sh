@@ -706,7 +706,8 @@ configure_claude_code() {
     echo -e "${BLUE}$(msg "step_config")${NC}"
     echo ""
 
-    CONFIG_FILE="$CLAUDE_DIR/config.json"
+    # 使用 settings.json（Claude Code v2.0.25+ 的新配置文件）
+    CONFIG_FILE="$CLAUDE_DIR/settings.json"
 
     # 讀取現有設定
     if [ -f "$CONFIG_FILE" ]; then
@@ -728,12 +729,39 @@ configure_claude_code() {
             show_progress "$(msg "backup_config")"
         fi
 
-        # 建立或更新設定（使用新版 voice-reminder 系統）
+        # 讀取現有配置以保留其他設定（如 mcpServers, alwaysThinkingEnabled 等）
+        EXISTING_CONFIG=""
+        if [ -f "$CONFIG_FILE.backup."* ]; then
+            LATEST_BACKUP=$(ls -t "$CONFIG_FILE.backup."* 2>/dev/null | head -1)
+            if [ -n "$LATEST_BACKUP" ]; then
+                EXISTING_CONFIG=$(cat "$LATEST_BACKUP")
+            fi
+        fi
+
+        # 建立或更新設定（使用新版格式和 voice-reminder 系統）
         if [ "$INSTALL_AUDIO" = true ]; then
-            # 包含 voice-reminder 的設定（支援三個 hook 事件）
-            cat > "$CONFIG_FILE" << EOF
+            # 包含 voice-reminder 的設定（支援四個 hook 事件：Notification, Stop, SubagentStop, PreToolUse）
+            if [ -n "$EXISTING_CONFIG" ] && command -v jq &> /dev/null; then
+                # 使用 jq 合併配置（如果有的話）
+                echo "$EXISTING_CONFIG" | jq \
+                    --arg wrapper "$INSTALL_DIR/bin/$WRAPPER_SCRIPT" \
+                    --arg reminder "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder" \
+                    '.statusLine = {"type": "command", "command": $wrapper, "padding": 0} |
+                     .hooks = {
+                       "Notification": [{"matcher": "", "hooks": [{"type": "command", "command": $reminder}]}],
+                       "Stop": [{"matcher": "", "hooks": [{"type": "command", "command": $reminder}]}],
+                       "SubagentStop": [{"matcher": "", "hooks": [{"type": "command", "command": $reminder}]}],
+                       "PreToolUse": [{"matcher": "", "hooks": [{"type": "command", "command": $reminder}]}]
+                     }' > "$CONFIG_FILE"
+            else
+                # 沒有 jq 或沒有現有配置，建立基本配置
+                cat > "$CONFIG_FILE" << EOF
 {
-  "statusLineCommand": "$INSTALL_DIR/bin/$WRAPPER_SCRIPT",
+  "statusLine": {
+    "type": "command",
+    "command": "$INSTALL_DIR/bin/$WRAPPER_SCRIPT",
+    "padding": 0
+  },
   "hooks": {
     "Notification": [
       {
@@ -767,18 +795,40 @@ configure_claude_code() {
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$INSTALL_DIR/plugins/voice-reminder/bin/voice-reminder"
+          }
+        ]
+      }
     ]
   }
 }
 EOF
+            fi
             show_progress "$(msg "config_statusline_audio")"
         else
             # 僅狀態列設定
-            cat > "$CONFIG_FILE" << EOF
+            if [ -n "$EXISTING_CONFIG" ] && command -v jq &> /dev/null; then
+                echo "$EXISTING_CONFIG" | jq \
+                    --arg wrapper "$INSTALL_DIR/bin/$WRAPPER_SCRIPT" \
+                    '.statusLine = {"type": "command", "command": $wrapper, "padding": 0}' > "$CONFIG_FILE"
+            else
+                cat > "$CONFIG_FILE" << EOF
 {
-  "statusLineCommand": "$INSTALL_DIR/bin/$WRAPPER_SCRIPT"
+  "statusLine": {
+    "type": "command",
+    "command": "$INSTALL_DIR/bin/$WRAPPER_SCRIPT",
+    "padding": 0
+  }
 }
 EOF
+            fi
             show_progress "$(msg "config_statusline")"
         fi
     fi
@@ -814,7 +864,7 @@ show_summary() {
 
     echo ""
     echo -e "${BLUE}$(msg "config_location")${NC}"
-    echo "  ✓ $CLAUDE_DIR/config.json"
+    echo "  ✓ $CLAUDE_DIR/settings.json"
 
     echo ""
     echo -e "${YELLOW}$(msg "next_steps")${NC}"

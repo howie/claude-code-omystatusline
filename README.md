@@ -105,7 +105,7 @@ This will start an interactive installer with:
   - 🔊 System default sounds (recommended)
   - 🎵 Custom audio file
   - 🗣️ Text-to-speech (TTS)
-- ⚙️ **Auto Configuration**: Automatically sets up `~/.claude/config.json`
+- ⚙️ **Auto Configuration**: Automatically sets up `~/.claude/settings.json`
 
 The installer provides a friendly CLI experience in your preferred language.
 
@@ -117,10 +117,14 @@ If you only want the status line without audio notifications:
 make install-simple
 ```
 
-Then manually add to your `~/.claude/config.json`:
+Then manually add to your `~/.claude/settings.json`:
 ```json
 {
-  "statusLineCommand": "~/.claude/omystatusline/bin/statusline-wrapper.sh"
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/omystatusline/bin/statusline-wrapper.sh",
+    "padding": 0
+  }
 }
 ```
 
@@ -162,7 +166,7 @@ After installation, files are organized in `~/.claude/omystatusline/`:
 ├── commands/                         # Symlinks to plugin commands
 │   ├── voice-reminder-on.md -> ../omystatusline/plugins/voice-reminder/commands/voice-reminder-on.md
 │   └── ... (other command symlinks)
-└── config.json                       # Claude Code configuration
+└── settings.json                     # Claude Code configuration (v2.0.25+)
 ```
 
 **Benefits of this structure:**
@@ -304,7 +308,7 @@ make install
   - 🔊 系統預設音效（推薦）
   - 🎵 自訂音訊檔案
   - 🗣️ 語音播報（TTS）
-- ⚙️ **自動設定**：自動設定 `~/.claude/config.json`
+- ⚙️ **自動設定**：自動設定 `~/.claude/settings.json`
 
 安裝程式提供友善的 CLI 介面，支援你偏好的語言。
 
@@ -316,10 +320,14 @@ make install
 make install-simple
 ```
 
-然後手動在 `~/.claude/config.json` 中加入：
+然後手動在 `~/.claude/settings.json` 中加入：
 ```json
 {
-  "statusLineCommand": "~/.claude/omystatusline/bin/statusline-wrapper.sh"
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/omystatusline/bin/statusline-wrapper.sh",
+    "padding": 0
+  }
 }
 ```
 
@@ -361,7 +369,7 @@ make install-simple
 ├── commands/                         # 指向插件 commands 的符號連結
 │   ├── voice-reminder-on.md -> ../omystatusline/plugins/voice-reminder/commands/voice-reminder-on.md
 │   └── ... (其他 command 符號連結)
-└── config.json                       # Claude Code 配置
+└── settings.json                     # Claude Code 配置 (v2.0.25+)
 ```
 
 **此結構的優點：**
