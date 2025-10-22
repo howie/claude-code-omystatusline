@@ -54,11 +54,11 @@ jobs:
 
     - name: Test shell wrapper
       run: |
-        # Create test binary location
-        mkdir -p "$HOME/.claude"
-        cp statusline-go "$HOME/.claude/statusline-go"
-        chmod +x statusline-wrapper.sh
-        echo '{}' | ./statusline-wrapper.sh
+        # Copy binary to scripts directory for testing
+        cp statusline-go scripts/statusline-go
+        chmod +x scripts/statusline-wrapper.sh
+        chmod +x scripts/statusline-go
+        echo '{}' | ./scripts/statusline-wrapper.sh
 
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4
