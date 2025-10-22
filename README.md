@@ -11,7 +11,7 @@
 
 > A rich, context-aware status line for Claude Code that keeps you informed about what really matters.
 
-**📢 Version 2.0**: New plugin architecture with organized directory structure! See [Migration Guide](MIGRATION.md) for upgrade instructions.
+**📢 Version 2.0**: New plugin architecture with organized directory structure and support for Claude Code v2.0.25+ configuration format!
 
 [English](#english) | [中文](#chinese)
 
