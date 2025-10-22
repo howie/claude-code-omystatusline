@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-10-22
+
+### Added
+- **Plugin architecture** with organized directory structure for better modularity
+- **PreToolUse hook support** for real-time notifications when Claude Code uses tools
+  - Notifications for AskUserQuestion events
+  - Configurable filtering to control which tool uses trigger notifications
+  - Integration with voice-reminder plugin
+- **Claude Code v2.0.25+ statusline format support** for compatibility with latest releases
+- **Voice-reminder plugin documentation** with comprehensive usage guide
+- CLI flag support for installer with `--help` and `--version` options
+- gofmt check integrated into `make lint` for consistent code formatting
+- Chinese voice support for TTS notifications
+- TTS voice test during installation for user verification
+- Interactive installer with audio notification options
+- Pre-push Git hook for quality checks
+
+### Fixed
+- Installer updated to use settings.json and properly configure PreToolUse hook
+- Audio notification hook to use correct Claude Code event name
+- TTS installation error when selecting option 3
+- Compilation check in installer
+- CI compatibility issues for cross-platform support
+
+### Changed
+- Migrated to new plugin architecture with organized directory structure
+- Output binaries to `output/` directory instead of project root for cleaner workspace
+- Enhanced installer with language selection (English/Chinese)
+- Improved statusline formatting with additional tests
+
+### Removed
+- Redundant MIGRATION.md documentation file
+- Redundant QUICK_START.md documentation file
+
 ## [1.1.0] - 2025-10-21
 
 ### Added
@@ -90,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Testing documentation for developers
 - Screenshot examples
 
+[1.2.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v1.2.0
 [1.1.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v1.1.0
 [0.1.1]: https://github.com/howie/claude-code-omystatusline/releases/tag/v0.1.1
 [0.1.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v0.1.0

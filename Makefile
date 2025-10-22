@@ -115,6 +115,7 @@ install-hooks:
 # 卸載 Git hooks
 uninstall-hooks:
 	@echo "正在卸載 Git hooks..."
+	@rm -f .git/hooks/pre-commit
 	@rm -f .git/hooks/pre-push
 	@echo "✓ Git hooks 已卸載"
 

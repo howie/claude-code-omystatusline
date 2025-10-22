@@ -4,6 +4,17 @@ This directory contains Git hooks to help maintain code quality.
 
 ## Available Hooks
 
+### pre-commit
+
+Runs before `git commit` to ensure code quality. Performs the following checks:
+
+1. **Go Formatting** (`make fmt`): Automatically formats Go code using `gofmt`
+   - Auto-fixes formatting issues and stages the formatted files
+2. **Go Lint** (`make lint`): Runs linting checks on Go code
+3. **Go Tests** (`make test`): Runs all Go tests
+
+This hook helps prevent CI failures by catching formatting, linting, and test issues before commit.
+
 ### pre-push
 
 Runs before `git push` to ensure code quality. Performs the following checks:
@@ -35,6 +46,8 @@ Or manually:
 Copy the hooks to `.git/hooks/`:
 
 ```bash
+cp .githooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
 cp .githooks/pre-push .git/hooks/pre-push
 chmod +x .git/hooks/pre-push
 ```
@@ -43,11 +56,44 @@ chmod +x .git/hooks/pre-push
 
 Once installed, the hooks run automatically:
 
+### Pre-commit Hook
+
+Runs automatically when you commit:
+
+```bash
+git commit -m "Your commit message"
+```
+
+The pre-commit hook will run formatting, linting, and tests. Example output:
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  Pre-Commit Checks - Claude Code omystatusline            ║
+╚════════════════════════════════════════════════════════════════╝
+
+ℹ 檢查 1/3: Go 程式碼格式化 (make fmt)
+✓ 程式碼格式正確
+
+ℹ 檢查 2/3: Go 程式碼檢查 (make lint)
+✓ Lint 檢查通過
+
+ℹ 檢查 3/3: Go 測試執行 (make test)
+✓ 測試通過
+
+════════════════════════════════════════════════════════════════
+✓ 所有檢查通過！準備提交
+════════════════════════════════════════════════════════════════
+```
+
+### Pre-push Hook
+
+Runs automatically when you push:
+
 ```bash
 git push origin branch-name
 ```
 
-The pre-push hook will run checks before the push. If any check fails, you'll see:
+The pre-push hook will run checks before the push. Example output:
 
 ```
 ╔════════════════════════════════════════════════════════════════╗
@@ -81,6 +127,10 @@ The pre-push hook will run checks before the push. If any check fails, you'll se
 If you need to bypass the hooks (not recommended):
 
 ```bash
+# Bypass pre-commit hook
+git commit --no-verify -m "Your message"
+
+# Bypass pre-push hook
 git push --no-verify origin branch-name
 ```
 
@@ -95,28 +145,37 @@ make uninstall-hooks
 Or manually:
 
 ```bash
+rm .git/hooks/pre-commit
 rm .git/hooks/pre-push
 ```
 
 ## Customization
 
-You can customize the checks by editing `.githooks/pre-push`. The hook is a bash script that exits with:
-- `0` - All checks passed, allow push
-- `1` - Checks failed, block push
+You can customize the checks by editing the hook scripts:
+- `.githooks/pre-commit` - Pre-commit checks
+- `.githooks/pre-push` - Pre-push checks
+
+The hooks are bash scripts that exit with:
+- `0` - All checks passed, allow commit/push
+- `1` - Checks failed, block commit/push
 
 ## Development
 
-### Testing the Hook
+### Testing the Hooks
 
-Test the hook without pushing:
+Test the hooks manually:
 
 ```bash
+# Test pre-commit hook
+.git/hooks/pre-commit
+
+# Test pre-push hook
 .git/hooks/pre-push origin https://github.com/user/repo
 ```
 
 ### Adding New Checks
 
-Add new checks to `.githooks/pre-push`:
+Add new checks to the appropriate hook file (`.githooks/pre-commit` or `.githooks/pre-push`):
 
 1. Add a new check section
 2. Update the check counter
@@ -127,9 +186,9 @@ Example:
 
 ```bash
 # ============================================================================
-# 檢查 6/6: 新檢查
+# 檢查 4/4: 新檢查
 # ============================================================================
-print_info "檢查 6/6: 新檢查描述"
+print_info "檢查 4/4: 新檢查描述"
 
 if your_check_command; then
     print_success "新檢查通過"
@@ -143,9 +202,10 @@ fi
 
 ### Hook not running
 
-Make sure the hook is executable:
+Make sure the hooks are executable:
 
 ```bash
+chmod +x .git/hooks/pre-commit
 chmod +x .git/hooks/pre-push
 ```
 
@@ -155,9 +215,10 @@ If you don't have Go installed, the compilation and test checks will be skipped 
 
 ### Permission denied
 
-The hook script needs execute permission:
+The hook scripts need execute permission:
 
 ```bash
+chmod +x .githooks/pre-commit
 chmod +x .githooks/pre-push
 ```
 
@@ -171,6 +232,8 @@ chmod +x .githooks/pre-push
 ## Related Commands
 
 ```bash
+make fmt               # Format Go code manually
+make lint              # Run linting manually
 make test              # Run tests manually
 make build             # Build the project
 make install-hooks     # Install Git hooks

@@ -30,6 +30,16 @@ fi
 # 創建 hooks 目錄（如果不存在）
 mkdir -p "$GIT_HOOKS_DIR"
 
+# 安裝 pre-commit hook
+if [ -f "$SCRIPT_DIR/pre-commit" ]; then
+    echo -e "${BLUE}ℹ${NC} 安裝 pre-commit hook..."
+    cp "$SCRIPT_DIR/pre-commit" "$GIT_HOOKS_DIR/pre-commit"
+    chmod +x "$GIT_HOOKS_DIR/pre-commit"
+    echo -e "${GREEN}✓${NC} pre-commit hook 已安裝"
+else
+    echo "警告：找不到 pre-commit hook"
+fi
+
 # 安裝 pre-push hook
 if [ -f "$SCRIPT_DIR/pre-push" ]; then
     echo -e "${BLUE}ℹ${NC} 安裝 pre-push hook..."
@@ -46,8 +56,10 @@ echo -e "${GREEN}  Git Hooks 安裝完成！${NC}"
 echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo "已安裝的 hooks："
+echo "  ✓ pre-commit - 提交前執行格式化、lint 和測試"
 echo "  ✓ pre-push - 推送前執行測試檢查"
 echo ""
 echo "如需停用 hooks，執行："
+echo "  rm .git/hooks/pre-commit"
 echo "  rm .git/hooks/pre-push"
 echo ""
