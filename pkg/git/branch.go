@@ -16,8 +16,16 @@ var (
 	cacheMutex    sync.RWMutex
 )
 
+// ClearCache 清除快取（用於測試）
+func ClearCache() {
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+	branchCache = ""
+	branchExpires = time.Time{}
+}
+
 // GetBranch 獲取 Git 分支（帶快取）
-func GetBranch() string {
+func GetBranch(dir string) string {
 	cacheMutex.RLock()
 	if time.Now().Before(branchExpires) && branchCache != "" {
 		result := branchCache
@@ -27,16 +35,20 @@ func GetBranch() string {
 	cacheMutex.RUnlock()
 
 	// 檢查是否為 Git 倉庫
-	if _, err := os.Stat(".git"); os.IsNotExist(err) {
+	gitPath := ".git"
+	if dir != "" {
+		gitPath = dir + "/.git"
+	}
+	if _, err := os.Stat(gitPath); os.IsNotExist(err) {
 		// 嘗試找到 Git 根目錄
-		cmd := exec.Command("git", "rev-parse", "--git-dir")
+		cmd := exec.Command("git", "-C", dir, "rev-parse", "--git-dir")
 		if err := cmd.Run(); err != nil {
 			return ""
 		}
 	}
 
 	// 獲取當前分支
-	cmd := exec.Command("git", "branch", "--show-current")
+	cmd := exec.Command("git", "-C", dir, "branch", "--show-current")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -50,10 +62,10 @@ func GetBranch() string {
 	// 檢測是否在 worktree 中
 	icon := "⚡"
 	worktreeLabel := ""
-	gitDirCmd := exec.Command("git", "rev-parse", "--git-dir")
+	gitDirCmd := exec.Command("git", "-C", dir, "rev-parse", "--git-dir")
 	gitDirOutput, err1 := gitDirCmd.Output()
 
-	gitCommonDirCmd := exec.Command("git", "rev-parse", "--git-common-dir")
+	gitCommonDirCmd := exec.Command("git", "-C", dir, "rev-parse", "--git-common-dir")
 	gitCommonDirOutput, err2 := gitCommonDirCmd.Output()
 
 	if err1 == nil && err2 == nil {

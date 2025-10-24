@@ -134,7 +134,7 @@ clean:
 # 執行測試
 test:
 	@echo "正在執行測試..."
-	@go test -v ./...
+	@go test -v -count=1 ./...
 	@echo "✓ 測試完成！"
 
 # 格式化程式碼

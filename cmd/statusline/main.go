@@ -29,7 +29,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		branch := git.GetBranch()
+		branch := git.GetBranch(input.Workspace.CurrentDir)
 		results <- statusline.Result{Type: "git", Data: branch}
 	}()
 
