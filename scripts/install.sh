@@ -731,7 +731,7 @@ configure_claude_code() {
 
         # 讀取現有配置以保留其他設定（如 mcpServers, alwaysThinkingEnabled 等）
         EXISTING_CONFIG=""
-        if [ -f "$CONFIG_FILE.backup."* ]; then
+        if ls "$CONFIG_FILE.backup."* 1> /dev/null 2>&1; then
             LATEST_BACKUP=$(ls -t "$CONFIG_FILE.backup."* 2>/dev/null | head -1)
             if [ -n "$LATEST_BACKUP" ]; then
                 EXISTING_CONFIG=$(cat "$LATEST_BACKUP")

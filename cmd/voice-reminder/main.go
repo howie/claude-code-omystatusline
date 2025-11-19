@@ -9,7 +9,7 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/voicereminder"
 )
 
-const version = "1.1.0"
+const version = "1.1.1"
 
 func main() {
 	// 處理命令列參數
@@ -69,11 +69,15 @@ func main() {
 	logger.Log("選擇的語音訊息: %s", message)
 
 	// 7. 播放語音
-	logger.Log("開始播放語音...")
-	if err := voicereminder.SpeakWithLogger(message, config.Speed, config.Language, logger); err != nil {
-		logger.Log("語音播放錯誤: %v", err)
+	if config.SoundEffects.Enabled {
+		logger.Log("開始播放語音...")
+		if err := voicereminder.SpeakWithLogger(message, config.Speed, config.Language, logger); err != nil {
+			logger.Log("語音播放錯誤: %v", err)
+		} else {
+			logger.Log("語音播放成功")
+		}
 	} else {
-		logger.Log("語音播放成功")
+		logger.Log("音效已在配置中禁用，跳過播放")
 	}
 
 	// 8. 更新統計
