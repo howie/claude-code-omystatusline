@@ -52,3 +52,4 @@ statusline-go
 /voice-reminder
 tmp/
 output/
+.specify/

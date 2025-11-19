@@ -76,6 +76,10 @@ func TestGetBranch_ActualWorktree(t *testing.T) {
 
 	// 創建臨時測試目錄
 	tmpDir := t.TempDir()
+	// Resolve symlinks to ensure we have the canonical path (fixes macOS /var vs /private/var issue)
+	if resolvedPath, err := filepath.EvalSymlinks(tmpDir); err == nil {
+		tmpDir = resolvedPath
+	}
 
 	// 初始化 git 倉庫
 	runGitCommand(t, tmpDir, "init")
