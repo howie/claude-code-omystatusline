@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -72,8 +73,14 @@ func GetBranch(dir string) string {
 		gitDir := strings.TrimSpace(string(gitDirOutput))
 		gitCommonDir := strings.TrimSpace(string(gitCommonDirOutput))
 
+		// Normalize paths to absolute paths for valid comparison
+		// git rev-parse can return relative paths (to CWD or to the repo root)
+		// We resolve them relative to the repo dir if they are relative
+		absGitDir := resolvePath(dir, gitDir)
+		absCommonDir := resolvePath(dir, gitCommonDir)
+
 		// 如果 git-dir 和 git-common-dir 不同，表示在 worktree 中
-		if gitDir != gitCommonDir {
+		if absGitDir != absCommonDir {
 			icon = "🔀"
 			worktreeLabel = " (worktree)"
 		}
@@ -88,4 +95,22 @@ func GetBranch(dir string) string {
 	cacheMutex.Unlock()
 
 	return result
+}
+
+// resolvePath resolves a git path to absolute path.
+// If path is relative, it is joined with baseDir.
+func resolvePath(baseDir, path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+
+	// Ensure baseDir is absolute
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		// If we can't get absolute path of base, try our best with what we have
+		// or fall back to original logic (string join)
+		return filepath.Join(baseDir, path)
+	}
+
+	return filepath.Join(absBase, path)
 }

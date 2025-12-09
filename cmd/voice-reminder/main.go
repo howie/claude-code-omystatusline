@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/howie/claude-code-omystatusline/pkg/voicereminder"
 )
 
-const version = "1.1.1"
+const version = "1.1.2"
 
 func main() {
 	// 處理命令列參數
@@ -20,6 +21,9 @@ func main() {
 			return
 		case "--version", "-v":
 			fmt.Printf("voice-reminder version %s\n", version)
+			return
+		case "--stats":
+			printStats()
 			return
 		}
 	}
@@ -128,6 +132,47 @@ func printHelp() {
 	fmt.Println("  /voice-reminder-stats  Show usage statistics")
 	fmt.Println("  /voice-reminder-test   Test the voice system")
 	fmt.Println()
-	fmt.Println("For more information, visit:")
 	fmt.Println("  https://github.com/howie/claude-code-omystatusline")
+}
+
+func printStats() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting home directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 新路徑優先
+	newStatsPath := filepath.Join(homeDir, ".claude", "omystatusline", "plugins", "voice-reminder", "data", "voice-reminder-stats.json")
+	// 舊路徑作為備援
+	oldStatsPath := filepath.Join(homeDir, ".claude", "voice-reminder-stats.json")
+
+	var statsPath string
+	if _, err := os.Stat(newStatsPath); err == nil {
+		statsPath = newStatsPath
+	} else if _, err := os.Stat(oldStatsPath); err == nil {
+		statsPath = oldStatsPath
+	} else {
+		fmt.Println("No statistics available yet.")
+		return
+	}
+
+	data, err := os.ReadFile(statsPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading stats file: %v\n", err)
+		os.Exit(1)
+	}
+
+	var stats voicereminder.Stats
+	if err := json.Unmarshal(data, &stats); err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing stats file: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Voice Reminder Statistics:")
+	fmt.Printf("  Last Triggered:      %s\n", stats.LastTriggered.Format("2006-01-02 15:04:05"))
+	fmt.Printf("  Notification Count:  %d\n", stats.NotificationCount)
+	fmt.Printf("  Stop Count:          %d\n", stats.StopCount)
+	fmt.Printf("  Subagent Stop Count: %d\n", stats.SubagentStopCount)
+	fmt.Printf("  PreToolUse Count:    %d\n", stats.PreToolUseCount)
 }
