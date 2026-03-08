@@ -10,7 +10,7 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/voicereminder"
 )
 
-const version = "1.1.2"
+const version = "2.0.0"
 
 func main() {
 	// 處理命令列參數
@@ -175,4 +175,7 @@ func printStats() {
 	fmt.Printf("  Stop Count:          %d\n", stats.StopCount)
 	fmt.Printf("  Subagent Stop Count: %d\n", stats.SubagentStopCount)
 	fmt.Printf("  PreToolUse Count:    %d\n", stats.PreToolUseCount)
+	fmt.Printf("  PostToolUse Count:   %d\n", stats.PostToolUseCount)
+	fmt.Printf("  Session Start Count: %d\n", stats.SessionStartCount)
+	fmt.Printf("  Session End Count:   %d\n", stats.SessionEndCount)
 }

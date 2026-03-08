@@ -25,6 +25,14 @@ type Input struct {
 		TotalLinesAdded    int     `json:"total_lines_added,omitempty"`
 		TotalLinesRemoved  int     `json:"total_lines_removed,omitempty"`
 	} `json:"cost,omitempty"` // v2.0.25+ 新增
+	AgentID   string `json:"agent_id,omitempty"`
+	AgentType string `json:"agent_type,omitempty"`
+	Worktree  struct {
+		Name            string `json:"name,omitempty"`
+		Path            string `json:"path,omitempty"`
+		Branch          string `json:"branch,omitempty"`
+		OriginalRepoDir string `json:"original_repo_dir,omitempty"`
+	} `json:"worktree,omitempty"`
 }
 
 // 結果通道資料

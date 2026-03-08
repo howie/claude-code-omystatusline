@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/howie/claude-code-omystatusline/pkg/context"
@@ -24,11 +25,25 @@ func main() {
 	results := make(chan statusline.Result, 4)
 	var wg sync.WaitGroup
 
+	// 讀取環境變數 STATUSLINE_MAX_TOKENS
+	maxTokens := 0
+	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
+		if v, err := strconv.Atoi(envMax); err == nil && v > 0 {
+			maxTokens = v
+		}
+	}
+
 	// 並行獲取各種資訊
 	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
+		// 若 input 帶有結構化 worktree 資料，直接使用
+		if input.Worktree.Branch != "" {
+			branch := git.FormatWorktreeBranch(input.Worktree.Name, input.Worktree.Branch)
+			results <- statusline.Result{Type: "git", Data: branch}
+			return
+		}
 		branch := git.GetBranch(input.Workspace.CurrentDir)
 		results <- statusline.Result{Type: "git", Data: branch}
 	}()
@@ -41,7 +56,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		contextInfo := context.Analyze(input.TranscriptPath)
+		contextInfo := context.Analyze(input.TranscriptPath, maxTokens)
 		results <- statusline.Result{Type: "context", Data: contextInfo}
 	}()
 
@@ -80,10 +95,16 @@ func main() {
 	modelDisplay := statusline.FormatModel(input.Model.DisplayName)
 	projectName := filepath.Base(input.Workspace.CurrentDir)
 
+	// 格式化 cost 顯示
+	costDisplay := ""
+	if input.Cost.TotalCostUSD > 0 {
+		costDisplay = fmt.Sprintf(" | 💰 $%.2f", input.Cost.TotalCostUSD)
+	}
+
 	// 輸出狀態列
-	fmt.Printf("%s[%s] 📂 %s%s%s | %s%s\n",
+	fmt.Printf("%s[%s] 📂 %s%s%s | %s%s%s\n",
 		statusline.ColorReset, modelDisplay, projectName, gitBranch,
-		contextUsage, totalHours, statusline.ColorReset)
+		contextUsage, totalHours, costDisplay, statusline.ColorReset)
 
 	// 輸出使用者訊息
 	if userMessage != "" {

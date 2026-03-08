@@ -34,6 +34,28 @@ type PreToolUseFilters struct {
 	IgnoreTools []string `json:"ignore_tools"`
 }
 
+// Hook 事件名稱常數
+const (
+	EventNotification = "Notification"
+	EventStop         = "Stop"
+	EventSubagentStop = "SubagentStop"
+	EventPreToolUse   = "PreToolUse"
+	EventPostToolUse  = "PostToolUse"
+	EventSessionStart = "SessionStart"
+	EventSessionEnd   = "SessionEnd"
+)
+
+// 配置 map key 常數（snake_case，對應 config JSON 格式）
+const (
+	ConfigKeyNotification = "notification"
+	ConfigKeyStop         = "stop"
+	ConfigKeySubagentStop = "subagent_stop"
+	ConfigKeyPreToolUse   = "pre_tool_use"
+	ConfigKeyPostToolUse  = "post_tool_use"
+	ConfigKeySessionStart = "session_start"
+	ConfigKeySessionEnd   = "session_end"
+)
+
 // HookInput Claude Code Hook 輸入
 type HookInput struct {
 	Message        string                 `json:"message"`
@@ -41,8 +63,9 @@ type HookInput struct {
 	SessionID      string                 `json:"session_id"`
 	TranscriptPath string                 `json:"transcript_path"`
 	Cwd            string                 `json:"cwd"`
-	ToolName       string                 `json:"tool_name"`  // PreToolUse/PostToolUse 專用
-	ToolInput      map[string]interface{} `json:"tool_input"` // PreToolUse/PostToolUse 專用
+	ToolName       string                 `json:"tool_name"`   // PreToolUse/PostToolUse 專用
+	ToolInput      map[string]interface{} `json:"tool_input"`  // PreToolUse/PostToolUse 專用
+	ToolOutput     map[string]interface{} `json:"tool_output"` // PostToolUse 專用
 }
 
 // Stats 觸發統計
@@ -51,6 +74,9 @@ type Stats struct {
 	StopCount         int       `json:"stop_count"`
 	SubagentStopCount int       `json:"subagent_stop_count"`
 	PreToolUseCount   int       `json:"pre_tool_use_count"`
+	PostToolUseCount  int       `json:"post_tool_use_count"`
+	SessionStartCount int       `json:"session_start_count"`
+	SessionEndCount   int       `json:"session_end_count"`
 	LastTriggered     time.Time `json:"last_triggered"`
 }
 

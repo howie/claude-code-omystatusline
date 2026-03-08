@@ -39,6 +39,44 @@ func TestGetColor(t *testing.T) {
 	}
 }
 
+func TestAnalyzeMaxTokens(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "transcript.log")
+
+	// 寫入一個有 100000 tokens 的 transcript
+	line := `{"message":{"usage":{"input_tokens":100000}},"isSidechain":false}`
+	if err := os.WriteFile(path, []byte(line), 0644); err != nil {
+		t.Fatalf("failed to write transcript: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		maxTokens int
+		wantPct   string // 預期百分比字串
+	}{
+		{"default (200k)", 0, "50%"},
+		{"200k explicit", 200000, "50%"},
+		{"1M extended", 1000000, "10%"},
+		{"negative fallback", -1, "50%"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Analyze(path, tt.maxTokens)
+			if !strings.Contains(result, tt.wantPct) {
+				t.Fatalf("Analyze with maxTokens=%d: expected %q in result, got %q", tt.maxTokens, tt.wantPct, result)
+			}
+		})
+	}
+}
+
+func TestAnalyzeEmptyPath(t *testing.T) {
+	result := Analyze("", 0)
+	if !strings.Contains(result, "0%") {
+		t.Fatalf("Analyze with empty path should show 0%%, got %q", result)
+	}
+}
+
 func TestCalculateUsage(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "transcript.log")

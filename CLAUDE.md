@@ -70,9 +70,9 @@ Claude Code
 JSON Input (stdin) containing session metadata
     ↓
 cmd/statusline/main.go parses and coordinates:
-    ├─ pkg/git.GetBranch() [cached 5 sec]
+    ├─ pkg/git.GetBranch() [cached 5 sec] or input.Worktree structured data
     ├─ pkg/session.CalculateTotalHours()
-    ├─ pkg/context.Analyze()
+    ├─ pkg/context.Analyze(path, maxTokens) [configurable via STATUSLINE_MAX_TOKENS]
     └─ pkg/statusline.ExtractUserMessage()
     ↓
 Results collected via channels
@@ -99,9 +99,10 @@ Formatted status line output to stdout
 
 ### Context Module (`pkg/context/`)
 - Analyzes transcript to estimate token count
+- `Analyze(transcriptPath string, maxTokens int)` - maxTokens configurable, defaults to 200k when <= 0
+- Supports extended context (e.g., 1M tokens) via `STATUSLINE_MAX_TOKENS` environment variable
 - Generates visual progress bar (██████░░░░ format)
 - Color-coded warnings: green (<60%), gold (60-80%), red (≥80%)
-- Based on 200k token limit (Claude's session context window)
 
 ### Session Module (`pkg/session/`)
 - Stores session data in `~/.claude/session-tracker/`
@@ -117,6 +118,7 @@ Formatted status line output to stdout
 ### Voice Reminder Plugin
 - Separate Go binary in `cmd/voice-reminder/`
 - Runs as a Claude Code hook to play audio notifications
+- Supports hook events: Notification, Stop, SubagentStop, PreToolUse, PostToolUse, SessionStart, SessionEnd
 - Can be enabled/disabled via slash commands
 - Supports system sounds, custom audio files, and text-to-speech
 

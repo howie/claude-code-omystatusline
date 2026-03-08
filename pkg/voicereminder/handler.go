@@ -14,14 +14,20 @@ func SelectMessage(config *Config, input *HookInput) string {
 	messages := config.GetMessages()
 
 	switch input.HookEventName {
-	case "Notification":
-		return selectNotificationMessage(messages["notification"], input.Message)
-	case "Stop":
-		return pickRandom(messages["stop"].Default)
-	case "SubagentStop":
-		return pickRandom(messages["subagent_stop"].Default)
-	case "PreToolUse":
-		return selectPreToolUseMessage(messages["pre_tool_use"], input, config)
+	case EventNotification:
+		return selectNotificationMessage(messages[ConfigKeyNotification], input.Message)
+	case EventStop:
+		return pickRandom(messages[ConfigKeyStop].Default)
+	case EventSubagentStop:
+		return pickRandom(messages[ConfigKeySubagentStop].Default)
+	case EventPreToolUse:
+		return selectPreToolUseMessage(messages[ConfigKeyPreToolUse], input, config)
+	case EventPostToolUse:
+		return pickRandom(messages[ConfigKeyPostToolUse].Default)
+	case EventSessionStart:
+		return pickRandom(messages[ConfigKeySessionStart].Default)
+	case EventSessionEnd:
+		return pickRandom(messages[ConfigKeySessionEnd].Default)
 	default:
 		return "請注意"
 	}
@@ -92,8 +98,7 @@ func pickRandom(v any) string {
 		if len(val) == 0 {
 			return ""
 		}
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		idx := r.Intn(len(val))
+		idx := rand.Intn(len(val))
 		if str, ok := val[idx].(string); ok {
 			return str
 		}
@@ -156,14 +161,20 @@ func UpdateStats(eventName string) error {
 	// 更新統計
 	stats.LastTriggered = time.Now()
 	switch eventName {
-	case "Notification":
+	case EventNotification:
 		stats.NotificationCount++
-	case "Stop":
+	case EventStop:
 		stats.StopCount++
-	case "SubagentStop":
+	case EventSubagentStop:
 		stats.SubagentStopCount++
-	case "PreToolUse":
+	case EventPreToolUse:
 		stats.PreToolUseCount++
+	case EventPostToolUse:
+		stats.PostToolUseCount++
+	case EventSessionStart:
+		stats.SessionStartCount++
+	case EventSessionEnd:
+		stats.SessionEndCount++
 	}
 
 	// 寫回檔案

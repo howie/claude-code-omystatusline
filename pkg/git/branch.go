@@ -86,7 +86,7 @@ func GetBranch(dir string) string {
 		}
 	}
 
-	result := fmt.Sprintf(" %s %s%s", icon, branch, worktreeLabel)
+	result := formatBranch(icon, branch, worktreeLabel)
 
 	// 更新快取
 	cacheMutex.Lock()
@@ -95,6 +95,23 @@ func GetBranch(dir string) string {
 	cacheMutex.Unlock()
 
 	return result
+}
+
+// FormatWorktreeBranch 格式化結構化 worktree 資料的分支顯示
+func FormatWorktreeBranch(name, branch string) string {
+	if branch == "" {
+		return ""
+	}
+	label := " (worktree)"
+	if name != "" {
+		label = fmt.Sprintf(" (worktree: %s)", name)
+	}
+	return formatBranch("🔀", branch, label)
+}
+
+// formatBranch 統一的分支格式化內部函式
+func formatBranch(icon, branch, label string) string {
+	return fmt.Sprintf(" %s %s%s", icon, branch, label)
 }
 
 // resolvePath resolves a git path to absolute path.
