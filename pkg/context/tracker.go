@@ -11,8 +11,16 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
 )
 
+// DefaultMaxTokens 預設 token 上限
+const DefaultMaxTokens = 200000
+
 // Analyze 分析 Context 使用量
-func Analyze(transcriptPath string) string {
+// maxTokens <= 0 時使用 DefaultMaxTokens（向後相容）
+func Analyze(transcriptPath string, maxTokens int) string {
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
+	}
+
 	var contextLength int
 
 	if transcriptPath == "" {
@@ -24,8 +32,8 @@ func Analyze(transcriptPath string) string {
 
 	// 即使 contextLength 為 0 也顯示進度條
 
-	// 計算百分比（基於 200k tokens）
-	percentage := int(float64(contextLength) * 100.0 / 200000.0)
+	// 計算百分比
+	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
 	if percentage > 100 {
 		percentage = 100
 	}

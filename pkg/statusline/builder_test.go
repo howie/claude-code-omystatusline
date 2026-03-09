@@ -7,17 +7,36 @@ import (
 )
 
 func TestFormatModel(t *testing.T) {
-	colored := FormatModel("Claude 3 Opus")
-	if !strings.Contains(colored, ColorGold) {
-		t.Fatalf("FormatModel should wrap Opus models with gold color, got %q", colored)
-	}
-	if !strings.HasSuffix(colored, ColorReset) {
-		t.Fatalf("FormatModel should reset color at the end, got %q", colored)
+	tests := []struct {
+		name      string
+		input     string
+		wantColor string
+		wantPlain bool
+	}{
+		{"Claude 3 Opus", "Claude 3 Opus", ColorGold, false},
+		{"Opus 4.6", "Opus 4.6", ColorGold, false},
+		{"Claude Opus 4.6", "Claude Opus 4.6", ColorGold, false},
+		{"Sonnet 4.6", "Sonnet 4.6", ColorCyan, false},
+		{"Haiku 4.5", "Haiku 4.5", ColorPink, false},
+		{"Custom Model", "Custom Model", "", true},
 	}
 
-	plain := FormatModel("Custom Model")
-	if plain != "Custom Model" {
-		t.Fatalf("FormatModel should return unchanged name for unknown models, got %q", plain)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatModel(tt.input)
+			if tt.wantPlain {
+				if result != tt.input {
+					t.Fatalf("FormatModel(%q) should return unchanged, got %q", tt.input, result)
+				}
+				return
+			}
+			if !strings.Contains(result, tt.wantColor) {
+				t.Fatalf("FormatModel(%q) should contain color %q, got %q", tt.input, tt.wantColor, result)
+			}
+			if !strings.HasSuffix(result, ColorReset) {
+				t.Fatalf("FormatModel(%q) should end with ColorReset, got %q", tt.input, result)
+			}
+		})
 	}
 }
 

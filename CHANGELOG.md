@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-08
+
+### Added
+- **Configurable token limit**: `Analyze()` now accepts `maxTokens` parameter, supporting extended context (e.g., 1M tokens for Opus 4.6/Sonnet 4.6)
+- **Environment variable `STATUSLINE_MAX_TOKENS`**: Users can set token limit without code changes (default: 200k)
+- **Cost display**: Shows session cost (`💰 $X.XX`) when cost data is available
+- **Structured worktree support**: Input struct now accepts `worktree` field with name/path/branch data from Claude Code, reducing git subprocess calls
+- **Agent metadata fields**: `agent_id` and `agent_type` fields added to Input struct
+- **New hook events for voice-reminder**: `PostToolUse`, `SessionStart`, `SessionEnd` events with corresponding messages and statistics
+- **Claude 4.5/4.6 model tests**: Test coverage for new model naming (Opus 4.6, Sonnet 4.6, Haiku 4.5)
+- `git.FormatWorktreeBranch()` function for structured worktree data formatting
+
+### Changed
+- `context.Analyze()` signature updated: `Analyze(transcriptPath string, maxTokens int) string`
+- Voice reminder version bumped to 2.0.0
+- Stats output now includes PostToolUse, SessionStart, and SessionEnd counters
+
 ## [1.2.1] - 2025-12-09
 
 ### Fixed
@@ -129,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Testing documentation for developers
 - Screenshot examples
 
+[2.0.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v2.0.0
 [1.2.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v1.2.0
 [1.1.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v1.1.0
 [0.1.1]: https://github.com/howie/claude-code-omystatusline/releases/tag/v0.1.1

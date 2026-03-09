@@ -94,14 +94,12 @@ func TestGetBranch_ActualWorktree(t *testing.T) {
 	runGitCommand(t, tmpDir, "add", "README.md")
 	runGitCommand(t, tmpDir, "commit", "-m", "Initial commit")
 
-	// 創建 .worktrees/ 目錄
-	worktreesDir := filepath.Join(tmpDir, ".worktrees")
-	if err := os.Mkdir(worktreesDir, 0755); err != nil {
-		t.Fatalf("Failed to create .worktrees dir: %v", err)
+	// 創建實際的 worktree（放在 repo 外部的獨立 temp 目錄避免 git index 衝突）
+	worktreeDir := t.TempDir()
+	if resolvedPath, err := filepath.EvalSymlinks(worktreeDir); err == nil {
+		worktreeDir = resolvedPath
 	}
-
-	// 創建實際的 worktree
-	worktreePath := filepath.Join(worktreesDir, "test-branch")
+	worktreePath := filepath.Join(worktreeDir, "test-branch")
 	runGitCommand(t, tmpDir, "worktree", "add", "-b", "test-branch", worktreePath)
 
 	// 獲取 worktree 的分支資訊
@@ -177,8 +175,17 @@ func TestGetBranch_VerifyGitCommands(t *testing.T) {
 }
 
 // Helper function to run git commands
+// Clears GIT_* env vars to avoid interference from parent git processes (e.g. pre-commit hooks)
 func runGitCommand(t *testing.T, dir string, args ...string) {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	// Filter out GIT_* env vars that may leak from parent git context
+	var cleanEnv []string
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, "GIT_") {
+			cleanEnv = append(cleanEnv, env)
+		}
+	}
+	cmd.Env = cleanEnv
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Git command failed: git %v\nError: %v\nOutput: %s", args, err, output)

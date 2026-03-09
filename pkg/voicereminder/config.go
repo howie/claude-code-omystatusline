@@ -84,31 +84,55 @@ func getDefaultConfig() *Config {
 		Language:  "zh",
 		Speed:     180,
 		Messages: map[string]EventMessages{
-			"notification": {
+			ConfigKeyNotification: {
 				Confirmation: "Claude 需要您的確認",
 				Error:        "任務失敗，請檢查",
 				Completed:    "任務完成",
 				Default:      "請注意",
 			},
-			"stop": {
+			ConfigKeyStop: {
 				Default: "Claude 回應完成",
 			},
-			"subagent_stop": {
+			ConfigKeySubagentStop: {
 				Default: "子任務已完成",
+			},
+			ConfigKeyPreToolUse: {
+				Default: "工具正在執行",
+			},
+			ConfigKeyPostToolUse: {
+				Default: "工具執行完成",
+			},
+			ConfigKeySessionStart: {
+				Default: "會話已開始",
+			},
+			ConfigKeySessionEnd: {
+				Default: "會話已結束",
 			},
 		},
 		MessagesEN: map[string]EventMessages{
-			"notification": {
+			ConfigKeyNotification: {
 				Confirmation: "Claude needs your confirmation",
 				Error:        "Task failed, please check",
 				Completed:    "Task completed",
 				Default:      "Attention needed",
 			},
-			"stop": {
+			ConfigKeyStop: {
 				Default: "Claude finished responding",
 			},
-			"subagent_stop": {
+			ConfigKeySubagentStop: {
 				Default: "Subagent task completed",
+			},
+			ConfigKeyPreToolUse: {
+				Default: "Tool in use",
+			},
+			ConfigKeyPostToolUse: {
+				Default: "Tool execution completed",
+			},
+			ConfigKeySessionStart: {
+				Default: "Session started",
+			},
+			ConfigKeySessionEnd: {
+				Default: "Session ended",
 			},
 		},
 		SoundEffects: SoundConfig{
