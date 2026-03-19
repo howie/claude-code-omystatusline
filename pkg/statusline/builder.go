@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
 // 模型圖示和顏色
@@ -27,7 +29,7 @@ func FormatModel(model string) string {
 	return model
 }
 
-// ExtractUserMessage 提取使用者訊息
+// ExtractUserMessage 提取使用者訊息（向後相容，從檔案讀取）
 func ExtractUserMessage(transcriptPath, sessionID string) string {
 	if transcriptPath == "" {
 		return ""
@@ -40,12 +42,7 @@ func ExtractUserMessage(transcriptPath, sessionID string) string {
 	defer func() { _ = file.Close() }()
 
 	// 讀取最後200行
-	scanner := bufio.NewScanner(file)
-
-	allLines := make([]string, 0)
-	for scanner.Scan() {
-		allLines = append(allLines, scanner.Text())
-	}
+	allLines := readAllLines(file)
 
 	start := len(allLines) - 200
 	if start < 0 {
@@ -53,7 +50,62 @@ func ExtractUserMessage(transcriptPath, sessionID string) string {
 	}
 	lines := allLines[start:]
 
+	return findUserMessage(lines, sessionID)
+}
+
+// ExtractUserMessageFromLines 使用共享 transcript 行提取使用者訊息
+func ExtractUserMessageFromLines(lines []transcript.Line, sessionID string) string {
 	// 從後往前搜尋使用者訊息
+	for i := len(lines) - 1; i >= 0; i-- {
+		l := lines[i]
+		if l.Parsed == nil {
+			continue
+		}
+
+		isSidechain, _ := l.Parsed["isSidechain"].(bool)
+		if isSidechain {
+			continue
+		}
+
+		sid, _ := l.Parsed["sessionId"].(string)
+		if sid != sessionID {
+			continue
+		}
+
+		if message, ok := l.Parsed["message"].(map[string]interface{}); ok {
+			role, _ := message["role"].(string)
+			msgType, _ := l.Parsed["type"].(string)
+
+			if role == "user" && msgType == "user" {
+				if content, ok := message["content"].(string); ok {
+					if isSystemMessage(content) {
+						continue
+					}
+					return formatUserMessage(content)
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
+// readAllLines 從 file 讀取所有行
+func readAllLines(file *os.File) []string {
+	scanner := bufio.NewScanner(file)
+	const maxScanTokenSize = 1024 * 1024
+	buf := make([]byte, 0, maxScanTokenSize)
+	scanner.Buffer(buf, maxScanTokenSize)
+
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines
+}
+
+// findUserMessage 從原始字串行中找使用者訊息
+func findUserMessage(lines []string, sessionID string) string {
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := lines[i]
 
@@ -66,7 +118,6 @@ func ExtractUserMessage(transcriptPath, sessionID string) string {
 			continue
 		}
 
-		// 檢查是否為當前 session 的使用者訊息
 		isSidechain, _ := data["isSidechain"].(bool)
 		sessionMatch := false
 		if sid, ok := data["sessionId"].(string); ok && sid == sessionID {
@@ -80,12 +131,9 @@ func ExtractUserMessage(transcriptPath, sessionID string) string {
 
 				if role == "user" && msgType == "user" {
 					if content, ok := message["content"].(string); ok {
-						// 過濾系統訊息
 						if isSystemMessage(content) {
 							continue
 						}
-
-						// 格式化並返回
 						return formatUserMessage(content)
 					}
 				}
@@ -161,4 +209,96 @@ func formatUserMessage(message string) string {
 	}
 
 	return ""
+}
+
+// RenderLine 建構一行狀態列
+type RenderLine struct {
+	Parts []string
+}
+
+// Add 加入一個部分（忽略空字串）
+func (rl *RenderLine) Add(parts ...string) {
+	for _, p := range parts {
+		if p != "" {
+			rl.Parts = append(rl.Parts, p)
+		}
+	}
+}
+
+// String 輸出行內容
+func (rl *RenderLine) String() string {
+	return strings.Join(rl.Parts, "")
+}
+
+// FormatToolsLine 格式化工具行
+func FormatToolsLine(toolsStr string) string {
+	if toolsStr == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s%s%s", ColorYellow, toolsStr, ColorReset)
+}
+
+// FormatAgentsLine 格式化代理行
+func FormatAgentsLine(agentsStr string) string {
+	if agentsStr == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s%s%s", ColorMagenta, agentsStr, ColorReset)
+}
+
+// FormatTodoLine 格式化 Todo 行
+func FormatTodoLine(todoStr, limitsStr string) string {
+	if todoStr == "" && limitsStr == "" {
+		return ""
+	}
+
+	var parts []string
+	if todoStr != "" {
+		parts = append(parts, fmt.Sprintf("%s%s%s", ColorYellow, todoStr, ColorReset))
+	}
+	if limitsStr != "" {
+		parts = append(parts, fmt.Sprintf("%s%s%s", ColorBrightBlue, limitsStr, ColorReset))
+	}
+
+	return strings.Join(parts, " | ")
+}
+
+// FormatSpeedDisplay 格式化速度顯示
+func FormatSpeedDisplay(speedStr string) string {
+	if speedStr == "" {
+		return ""
+	}
+	return fmt.Sprintf(" %s%s%s", ColorDim, speedStr, ColorReset)
+}
+
+// FormatSessionNameDisplay 格式化 session 名稱
+func FormatSessionNameDisplay(name string) string {
+	if name == "" {
+		return ""
+	}
+	return fmt.Sprintf(" %s[%s]%s", ColorDim, name, ColorReset)
+}
+
+// FormatConfigCountsDisplay 格式化配置統計
+func FormatConfigCountsDisplay(countsStr string) string {
+	if countsStr == "" {
+		return ""
+	}
+	return fmt.Sprintf(" %s%s%s", ColorDim, countsStr, ColorReset)
+}
+
+// FormatAutocompactDisplay 格式化自動壓縮警告
+func FormatAutocompactDisplay(autocompactStr string) string {
+	if autocompactStr == "" {
+		return ""
+	}
+	return fmt.Sprintf(" %s%s%s", ColorRed, autocompactStr, ColorReset)
+}
+
+// FormatGitStatusDisplay 格式化 Git 狀態
+func FormatGitStatusDisplay(gitStatusStr string) string {
+	if gitStatusStr == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s%s%s", ColorDim, gitStatusStr, ColorReset)
 }

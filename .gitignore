@@ -48,6 +48,7 @@ go.work.sum
 # Build artifacts
 statusline-go
 /statusline-go
+/statusline
 
 /voice-reminder
 tmp/
