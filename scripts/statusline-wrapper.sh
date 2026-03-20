@@ -6,5 +6,6 @@
 # Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Execute the Go statusline binary with JSON input and use printf to interpret ANSI codes
-printf "%b" "$(cat | "$SCRIPT_DIR/statusline-go")"
+# Execute the Go statusline binary with JSON input
+# The Go binary outputs proper ANSI escape bytes directly, no printf needed
+cat | "$SCRIPT_DIR/statusline-go"

@@ -75,5 +75,10 @@ func Load() *Config {
 		return DefaultConfig()
 	}
 
+	// 驗證 DisplayMode
+	if cfg.DisplayMode != "expanded" && cfg.DisplayMode != "compact" {
+		cfg.DisplayMode = "expanded"
+	}
+
 	return cfg
 }

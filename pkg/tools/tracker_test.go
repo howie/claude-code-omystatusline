@@ -90,8 +90,15 @@ func TestAnalyzeCompletedTool(t *testing.T) {
 	}
 
 	result := Analyze(lines)
-	if len(result) != 0 {
-		t.Fatalf("expected no active tools (tool completed), got %d", len(result))
+	// 完成的工具現在會作為 fallback 顯示
+	if len(result) != 1 {
+		t.Fatalf("expected 1 completed tool as fallback, got %d", len(result))
+	}
+	if !result[0].Completed {
+		t.Fatalf("expected tool to be marked as Completed")
+	}
+	if result[0].Name != "Read" {
+		t.Fatalf("expected tool name 'Read', got %q", result[0].Name)
 	}
 }
 
@@ -103,10 +110,25 @@ func TestFormat(t *testing.T) {
 
 	result := Format(tools)
 	if !strings.Contains(result, "◐ Read: /src/main.go") {
-		t.Fatalf("expected formatted tool with target, got %q", result)
+		t.Fatalf("expected formatted active tool with target, got %q", result)
 	}
 	if !strings.Contains(result, "◐ Write") {
-		t.Fatalf("expected formatted tool without target, got %q", result)
+		t.Fatalf("expected formatted active tool without target, got %q", result)
+	}
+}
+
+func TestFormatCompletedTools(t *testing.T) {
+	tools := []ToolInfo{
+		{Name: "Read", Target: "/src/main.go", Completed: true},
+		{Name: "Write", Target: "", Completed: true},
+	}
+
+	result := Format(tools)
+	if !strings.Contains(result, "✓ Read: /src/main.go") {
+		t.Fatalf("expected completed tool with ✓ icon, got %q", result)
+	}
+	if !strings.Contains(result, "✓ Write") {
+		t.Fatalf("expected completed tool with ✓ icon, got %q", result)
 	}
 }
 

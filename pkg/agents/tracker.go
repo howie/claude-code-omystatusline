@@ -127,6 +127,24 @@ func Analyze(lines []transcript.Line, sessionID string) []AgentInfo {
 		}
 	}
 
+	// 若沒有正在執行的 agents，顯示最近完成的作為 fallback
+	if len(running) == 0 {
+		for i := len(agentOrder) - 1; i >= 0; i-- {
+			id := agentOrder[i]
+			agent := activeAgents[id]
+			if agent != nil && agent.Completed {
+				agent.ElapsedSec = int(now.Sub(agent.StartTime).Seconds())
+				if agent.ElapsedSec < 0 {
+					agent.ElapsedSec = 0
+				}
+				running = append(running, *agent)
+				if len(running) >= MaxAgents {
+					break
+				}
+			}
+		}
+	}
+
 	// 反轉
 	for i, j := 0, len(running)-1; i < j; i, j = i+1, j-1 {
 		running[i], running[j] = running[j], running[i]

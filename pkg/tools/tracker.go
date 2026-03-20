@@ -7,10 +7,11 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
-// ToolInfo 代表一個正在執行的工具
+// ToolInfo 代表一個工具（正在執行或已完成）
 type ToolInfo struct {
-	Name   string
-	Target string // 截斷的路徑或參數
+	Name      string
+	Target    string // 截斷的路徑或參數
+	Completed bool   // 是否已完成
 }
 
 // MaxTools 最多顯示的工具數量
@@ -66,7 +67,7 @@ func Analyze(lines []transcript.Line) []ToolInfo {
 		}
 	}
 
-	// 找出仍在執行的工具（從最新往回）
+	// 先找出仍在執行的工具（從最新往回）
 	var running []ToolInfo
 	for i := len(toolOrder) - 1; i >= 0; i-- {
 		id := toolOrder[i]
@@ -74,6 +75,21 @@ func Analyze(lines []transcript.Line) []ToolInfo {
 			running = append(running, activeTools[id])
 			if len(running) >= MaxTools {
 				break
+			}
+		}
+	}
+
+	// 若沒有正在執行的工具，顯示最近完成的工具作為 fallback
+	if len(running) == 0 {
+		for i := len(toolOrder) - 1; i >= 0; i-- {
+			id := toolOrder[i]
+			if completedTools[id] {
+				info := activeTools[id]
+				info.Completed = true
+				running = append(running, info)
+				if len(running) >= MaxTools {
+					break
+				}
 			}
 		}
 	}
@@ -129,10 +145,14 @@ func Format(tools []ToolInfo) string {
 
 	var parts []string
 	for _, t := range tools {
+		icon := "◐"
+		if t.Completed {
+			icon = "✓"
+		}
 		if t.Target != "" {
-			parts = append(parts, fmt.Sprintf("◐ %s: %s", t.Name, t.Target))
+			parts = append(parts, fmt.Sprintf("%s %s: %s", icon, t.Name, t.Target))
 		} else {
-			parts = append(parts, fmt.Sprintf("◐ %s", t.Name))
+			parts = append(parts, fmt.Sprintf("%s %s", icon, t.Name))
 		}
 	}
 
