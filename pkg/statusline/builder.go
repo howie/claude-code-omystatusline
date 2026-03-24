@@ -320,7 +320,8 @@ func FormatLinesChanged(added, removed int) string {
 
 // FormatCostColored 格式化 cost 顯示，依金額著色
 // <$5 預設色，≥$5 黃色，≥$10 紅色
-func FormatCostColored(cost float64) string {
+// sep 為分隔符（例如 " | "）
+func FormatCostColored(cost float64, sep string) string {
 	if cost <= 0 {
 		return ""
 	}
@@ -333,5 +334,5 @@ func FormatCostColored(cost float64) string {
 	default:
 		color = ColorDim
 	}
-	return fmt.Sprintf(" | %s💰 $%.2f%s", color, cost, ColorReset)
+	return fmt.Sprintf("%s%s💰 $%.2f%s", sep, color, cost, ColorReset)
 }

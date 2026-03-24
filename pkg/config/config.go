@@ -6,10 +6,46 @@ import (
 	"path/filepath"
 )
 
+// SeparatorStyle 分隔符風格
+type SeparatorStyle struct {
+	Left    string // 左分隔符
+	Right   string // 右分隔符
+	Divider string // 區段內分隔符
+}
+
+// 預定義的分隔符風格
+var (
+	SepPipe      = SeparatorStyle{Left: " | ", Right: " | ", Divider: " | "}
+	SepPowerline = SeparatorStyle{Left: " \ue0b0 ", Right: " \ue0b2 ", Divider: " \ue0b1 "}
+	SepNerdFont  = SeparatorStyle{Left: " \ue0b0 ", Right: " \ue0b2 ", Divider: " │ "}
+)
+
 // Config 使用者配置
 type Config struct {
-	DisplayMode string            `json:"display_mode"` // "expanded" or "compact"
-	Sections    SectionVisibility `json:"sections"`
+	DisplayMode    string            `json:"display_mode"`    // "expanded" or "compact"
+	SeparatorStyle string            `json:"separator_style"` // "pipe", "powerline", "nerdfont"
+	Sections       SectionVisibility `json:"sections"`
+}
+
+// GetSeparator 取得目前的分隔符設定
+func (c *Config) GetSeparator() SeparatorStyle {
+	// 環境變數優先
+	if os.Getenv("CLAUDE_STATUSLINE_POWERLINE") == "1" {
+		return SepPowerline
+	}
+	if os.Getenv("CLAUDE_STATUSLINE_NERDFONT") == "1" {
+		return SepNerdFont
+	}
+
+	// 配置檔設定
+	switch c.SeparatorStyle {
+	case "powerline":
+		return SepPowerline
+	case "nerdfont":
+		return SepNerdFont
+	default:
+		return SepPipe
+	}
 }
 
 // SectionVisibility 各區段的可見性設定

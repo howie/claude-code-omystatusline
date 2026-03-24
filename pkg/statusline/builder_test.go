@@ -147,7 +147,7 @@ func TestFormatCostColored(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FormatCostColored(tt.cost)
+			result := FormatCostColored(tt.cost, " | ")
 			if tt.wantEmpty {
 				if result != "" {
 					t.Fatalf("expected empty for cost %.2f, got %q", tt.cost, result)

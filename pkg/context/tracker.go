@@ -9,8 +9,12 @@ import (
 	"strings"
 
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
+	"github.com/howie/claude-code-omystatusline/pkg/terminal"
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
+
+// RenderMode 用於控制進度條的渲染模式（預設 True Color）
+var RenderMode = terminal.ModeTrueColor
 
 // DefaultMaxTokens 預設 token 上限
 const DefaultMaxTokens = 200000
@@ -77,8 +81,12 @@ func formatContext(contextLength, maxTokens int) string {
 
 	progressBar := generateProgressBar(percentage)
 	formattedNum := formatNumber(contextLength)
-	color := getColor(percentage)
 
+	if RenderMode == terminal.ModeASCII {
+		return fmt.Sprintf(" | %s %d%% %s", progressBar, percentage, formattedNum)
+	}
+
+	color := getColor(percentage)
 	return fmt.Sprintf(" | %s %s%d%% %s%s",
 		progressBar, color, percentage, formattedNum, statusline.ColorReset)
 }
@@ -188,8 +196,32 @@ func calculateUsage(transcriptPath string) int {
 	return 0
 }
 
-// generateProgressBar 生成進度條
+// gradientColors 定義 10 格漸層色（綠→黃→橙→紅）
+var gradientColors = [10]string{
+	"\033[38;2;76;175;80m",  // green
+	"\033[38;2;108;175;72m", // green-yellow
+	"\033[38;2;139;175;64m", // yellow-green
+	"\033[38;2;171;175;56m", // yellow
+	"\033[38;2;202;165;48m", // gold
+	"\033[38;2;224;150;40m", // gold-orange
+	"\033[38;2;234;130;36m", // orange
+	"\033[38;2;244;110;32m", // orange-red
+	"\033[38;2;244;80;30m",  // red-orange
+	"\033[38;2;244;67;54m",  // red
+}
+
+// generateProgressBar 生成進度條，根據 RenderMode 選擇渲染方式
 func generateProgressBar(percentage int) string {
+	switch RenderMode {
+	case terminal.ModeASCII:
+		return generateProgressBarASCII(percentage)
+	default:
+		return generateProgressBarTrueColor(percentage)
+	}
+}
+
+// generateProgressBarTrueColor 生成漸層色進度條（True Color / 256 色）
+func generateProgressBarTrueColor(percentage int) string {
 	width := 10
 	filled := percentage * width / 100
 	if filled > width {
@@ -197,14 +229,15 @@ func generateProgressBar(percentage int) string {
 	}
 
 	empty := width - filled
-	color := getColor(percentage)
 
 	var bar strings.Builder
 
-	// 填充部分
+	// 填充部分：每格獨立漸層色
+	for i := 0; i < filled; i++ {
+		bar.WriteString(gradientColors[i])
+		bar.WriteString("█")
+	}
 	if filled > 0 {
-		bar.WriteString(color)
-		bar.WriteString(strings.Repeat("█", filled))
 		bar.WriteString(statusline.ColorReset)
 	}
 
@@ -216,6 +249,18 @@ func generateProgressBar(percentage int) string {
 	}
 
 	return bar.String()
+}
+
+// generateProgressBarASCII 生成純 ASCII 進度條
+func generateProgressBarASCII(percentage int) string {
+	width := 10
+	filled := percentage * width / 100
+	if filled > width {
+		filled = width
+	}
+	empty := width - filled
+
+	return "[" + strings.Repeat("#", filled) + strings.Repeat("-", empty) + "]"
 }
 
 // getColor 獲取 Context 顏色

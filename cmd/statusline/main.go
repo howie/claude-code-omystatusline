@@ -17,6 +17,7 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/session"
 	"github.com/howie/claude-code-omystatusline/pkg/speed"
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
+	"github.com/howie/claude-code-omystatusline/pkg/terminal"
 	"github.com/howie/claude-code-omystatusline/pkg/todo"
 	"github.com/howie/claude-code-omystatusline/pkg/tools"
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
@@ -31,6 +32,12 @@ func main() {
 
 	// Phase 1: 載入配置（同步，快速本地檔案讀取）
 	cfg := config.Load()
+
+	// 偵測終端渲染能力
+	context.RenderMode = terminal.Detect()
+
+	// 取得分隔符設定
+	sep := cfg.GetSeparator()
 
 	// 讀取環境變數 STATUSLINE_MAX_TOKENS
 	maxTokens := 0
@@ -271,7 +278,7 @@ func main() {
 	// Cost 顯示（顏色分級：<$5 預設，≥$5 黃色，≥$10 紅色）
 	costDisplay := ""
 	if cfg.Sections.Cost {
-		costDisplay = statusline.FormatCostColored(input.Cost.TotalCostUSD)
+		costDisplay = statusline.FormatCostColored(input.Cost.TotalCostUSD, sep.Divider)
 	}
 
 	// 程式碼行數變化 (+N/-M)
@@ -303,12 +310,12 @@ func main() {
 	}
 
 	// Line 1: 主要狀態列
-	fmt.Printf("%s[%s] 📂 %s%s%s%s%s%s | %s%s%s%s%s\n",
+	fmt.Printf("%s[%s] 📂 %s%s%s%s%s%s%s%s%s%s%s%s\n",
 		statusline.ColorReset, modelDisplay, projectName,
 		sessionNameDisplay, gitDisplay,
 		contextUsage, speedDisplay, autocompactDisplay,
 		linesDisplay,
-		sessionDisplay, costDisplay, configInfoDisplay,
+		sep.Divider, sessionDisplay, costDisplay, configInfoDisplay,
 		statusline.ColorReset)
 
 	// Line 2: 工具行（expanded 模式）
@@ -343,7 +350,7 @@ func main() {
 		}
 		if len(compactParts) > 0 {
 			fmt.Printf("%s%s%s\n", statusline.ColorDim,
-				joinWithSep(compactParts, " | "), statusline.ColorReset)
+				joinWithSep(compactParts, sep.Divider), statusline.ColorReset)
 		}
 	}
 
