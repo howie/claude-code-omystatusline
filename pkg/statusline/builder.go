@@ -302,3 +302,36 @@ func FormatGitStatusDisplay(gitStatusStr string) string {
 	}
 	return fmt.Sprintf("%s%s%s", ColorDim, gitStatusStr, ColorReset)
 }
+
+// FormatLinesChanged 格式化程式碼行數變化 (+N/-M)
+func FormatLinesChanged(added, removed int) string {
+	if added == 0 && removed == 0 {
+		return ""
+	}
+	var parts []string
+	if added > 0 {
+		parts = append(parts, fmt.Sprintf("%s+%d%s", ColorGreen, added, ColorReset))
+	}
+	if removed > 0 {
+		parts = append(parts, fmt.Sprintf("%s-%d%s", ColorRed, removed, ColorReset))
+	}
+	return " " + strings.Join(parts, "/")
+}
+
+// FormatCostColored 格式化 cost 顯示，依金額著色
+// <$5 預設色，≥$5 黃色，≥$10 紅色
+func FormatCostColored(cost float64) string {
+	if cost <= 0 {
+		return ""
+	}
+	color := ""
+	switch {
+	case cost >= 10:
+		color = ColorRed
+	case cost >= 5:
+		color = ColorYellow
+	default:
+		color = ColorDim
+	}
+	return fmt.Sprintf(" | %s💰 $%.2f%s", color, cost, ColorReset)
+}

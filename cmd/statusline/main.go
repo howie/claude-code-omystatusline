@@ -268,11 +268,15 @@ func main() {
 	modelDisplay := statusline.FormatModel(input.Model.DisplayName)
 	projectName := filepath.Base(input.Workspace.CurrentDir)
 
-	// Cost 顯示
+	// Cost 顯示（顏色分級：<$5 預設，≥$5 黃色，≥$10 紅色）
 	costDisplay := ""
-	if cfg.Sections.Cost && input.Cost.TotalCostUSD > 0 {
-		costDisplay = fmt.Sprintf(" | 💰 $%.2f", input.Cost.TotalCostUSD)
+	if cfg.Sections.Cost {
+		costDisplay = statusline.FormatCostColored(input.Cost.TotalCostUSD)
 	}
+
+	// 程式碼行數變化 (+N/-M)
+	linesDisplay := statusline.FormatLinesChanged(
+		input.Cost.TotalLinesAdded, input.Cost.TotalLinesRemoved)
 
 	// Git 狀態附加在分支名後
 	gitDisplay := gitBranch
@@ -292,12 +296,19 @@ func main() {
 	// Config info
 	configInfoDisplay := statusline.FormatConfigCountsDisplay(configInfo)
 
+	// 零值智慧隱藏：session time 為 "0m" 時不顯示
+	sessionDisplay := totalHours
+	if sessionDisplay == "0m" {
+		sessionDisplay = ""
+	}
+
 	// Line 1: 主要狀態列
-	fmt.Printf("%s[%s] 📂 %s%s%s%s%s | %s%s%s%s%s\n",
+	fmt.Printf("%s[%s] 📂 %s%s%s%s%s%s | %s%s%s%s%s\n",
 		statusline.ColorReset, modelDisplay, projectName,
 		sessionNameDisplay, gitDisplay,
 		contextUsage, speedDisplay, autocompactDisplay,
-		totalHours, costDisplay, configInfoDisplay,
+		linesDisplay,
+		sessionDisplay, costDisplay, configInfoDisplay,
 		statusline.ColorReset)
 
 	// Line 2: 工具行（expanded 模式）

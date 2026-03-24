@@ -91,3 +91,75 @@ func TestFormatUserMessage(t *testing.T) {
 		t.Fatalf("ellipsis line should mention remaining content, got %q", lines[3])
 	}
 }
+
+func TestFormatLinesChanged(t *testing.T) {
+	tests := []struct {
+		name    string
+		added   int
+		removed int
+		want    string
+	}{
+		{"both zero", 0, 0, ""},
+		{"only added", 50, 0, ""},
+		{"only removed", 0, 10, ""},
+		{"both non-zero", 50, 10, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatLinesChanged(tt.added, tt.removed)
+			if tt.added == 0 && tt.removed == 0 {
+				if result != "" {
+					t.Fatalf("expected empty string for zero values, got %q", result)
+				}
+				return
+			}
+			if tt.added > 0 && !strings.Contains(result, fmt.Sprintf("+%d", tt.added)) {
+				t.Fatalf("expected +%d in result, got %q", tt.added, result)
+			}
+			if tt.removed > 0 && !strings.Contains(result, fmt.Sprintf("-%d", tt.removed)) {
+				t.Fatalf("expected -%d in result, got %q", tt.removed, result)
+			}
+			if tt.added > 0 && !strings.Contains(result, ColorGreen) {
+				t.Fatalf("expected green color for additions, got %q", result)
+			}
+			if tt.removed > 0 && !strings.Contains(result, ColorRed) {
+				t.Fatalf("expected red color for removals, got %q", result)
+			}
+		})
+	}
+}
+
+func TestFormatCostColored(t *testing.T) {
+	tests := []struct {
+		name      string
+		cost      float64
+		wantEmpty bool
+		wantColor string
+	}{
+		{"zero", 0, true, ""},
+		{"negative", -1, true, ""},
+		{"low cost", 2.50, false, ColorDim},
+		{"medium cost", 5.00, false, ColorYellow},
+		{"high cost", 10.00, false, ColorRed},
+		{"very high", 25.50, false, ColorRed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatCostColored(tt.cost)
+			if tt.wantEmpty {
+				if result != "" {
+					t.Fatalf("expected empty for cost %.2f, got %q", tt.cost, result)
+				}
+				return
+			}
+			if !strings.Contains(result, tt.wantColor) {
+				t.Fatalf("expected color %q for cost %.2f, got %q", tt.wantColor, tt.cost, result)
+			}
+			if !strings.Contains(result, fmt.Sprintf("$%.2f", tt.cost)) {
+				t.Fatalf("expected formatted cost in result, got %q", result)
+			}
+		})
+	}
+}
