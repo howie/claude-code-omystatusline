@@ -2,7 +2,10 @@ package terminal
 
 import (
 	"os"
+	"strconv"
 	"strings"
+	"syscall"
+	"unsafe"
 )
 
 // RenderMode 終端渲染模式
@@ -44,4 +47,38 @@ func Detect() RenderMode {
 	}
 
 	return ModeASCII
+}
+
+// winsize 是 TIOCGWINSZ ioctl 的回傳結構
+type winsize struct {
+	Row    uint16
+	Col    uint16
+	Xpixel uint16
+	Ypixel uint16
+}
+
+// Width 回傳終端的欄位寬度。
+// 優先用 ioctl TIOCGWINSZ，其次讀 COLUMNS 環境變數，最後預設 120。
+func Width() int {
+	// 嘗試從 stdout/stderr/stdin 取得終端寬度
+	for _, fd := range []uintptr{1, 2, 0} {
+		var ws winsize
+		if _, _, errno := syscall.Syscall(
+			syscall.SYS_IOCTL,
+			fd,
+			syscall.TIOCGWINSZ,
+			uintptr(unsafe.Pointer(&ws)),
+		); errno == 0 && ws.Col > 0 {
+			return int(ws.Col)
+		}
+	}
+
+	// Fallback: COLUMNS 環境變數
+	if cols := os.Getenv("COLUMNS"); cols != "" {
+		if n, err := strconv.Atoi(cols); err == nil && n > 0 {
+			return n
+		}
+	}
+
+	return 120
 }

@@ -36,9 +36,7 @@ func TestLoadCustomConfig(t *testing.T) {
 	dir := t.TempDir()
 
 	// 模擬 home 目錄
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", dir)
 
 	configDir := filepath.Join(dir, ".claude", "omystatusline")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
