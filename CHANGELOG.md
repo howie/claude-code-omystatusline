@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-25
+
+### Added
+- **Claude-HUD inspired features** (10 new display sections):
+  - **Active tools display**: Running tools with spinner animation and target path
+  - **Subagent tracking**: Running subagents with type, model, description, and elapsed time
+  - **Todo item tracking**: In-progress todo items with progress count
+  - **API usage limits**: 5h/7d quota display via Anthropic OAuth API with caching
+  - **Output speed tracking**: Real-time tokens/sec calculation
+  - **Enhanced git status**: Dirty indicator (`*`), ahead/behind counts, file change stats
+  - **Session name display**: Shows session name from `/rename` command
+  - **Config file counts**: CLAUDE.md files, MCP servers, and hooks count
+  - **Autocompact detection**: Visual indicator when context compression is triggered
+  - **Lines changed display**: `+N/-M` lines added/removed in current session
+- **User-configurable display** via `~/.claude/omystatusline/config.json`:
+  - Toggle any section on/off individually
+  - `display_mode`: `"expanded"` (multi-line, default) or `"compact"` (single-line)
+  - `separator_style`: `"pipe"` (default), `"powerline"`, or `"nerdfont"`
+- **Gradient progress bar**: Per-segment color gradient (green → yellow → orange → red)
+- **Terminal capability detection** (`pkg/terminal`): Detects True Color / 256-color / ASCII
+  - ASCII fallback mode via `CLAUDE_STATUSLINE_ASCII=1` renders as `[####------]`
+- **Powerline / Nerd Font separators**: Configure via `config.json` or env vars
+  (`CLAUDE_STATUSLINE_POWERLINE=1` / `CLAUDE_STATUSLINE_NERDFONT=1`)
+- **Cost color thresholds**: Dim for < $5, yellow for ≥ $5, red for ≥ $10
+- **Auto-truncation**: Status line automatically truncates to fit terminal width
+- **Shared transcript reader** (`pkg/transcript`): Eliminates redundant file I/O across packages
+
+### Fixed
+- Filter `<local-command-caveat>` system messages from status line output
+- Hide session time when value is `"0m"` to reduce visual clutter
+
+### Architecture
+- 8 new packages: `pkg/agents`, `pkg/apilimits`, `pkg/config`, `pkg/gitstatus`, `pkg/speed`, `pkg/terminal`, `pkg/todo`, `pkg/tools`, `pkg/transcript`
+- Multi-line expanded output mode (default) with opt-in compact mode
+
 ## [2.0.0] - 2026-03-08
 
 ### Added
@@ -146,6 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Testing documentation for developers
 - Screenshot examples
 
+[2.1.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v2.1.0
 [2.0.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v2.0.0
 [1.2.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v1.2.0
 [1.1.0]: https://github.com/howie/claude-code-omystatusline/releases/tag/v1.1.0
