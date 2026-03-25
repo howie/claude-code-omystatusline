@@ -156,8 +156,8 @@ func isSystemMessage(content string) bool {
 
 	// 過濾 XML 標籤
 	xmlTags := []string{
-		"<local-command-stdout>", "<command-name>",
-		"<command-message>", "<command-args>",
+		"<local-command-stdout>", "<local-command-caveat>",
+		"<command-name>", "<command-message>", "<command-args>",
 	}
 	for _, tag := range xmlTags {
 		if strings.Contains(content, tag) {
