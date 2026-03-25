@@ -1,0 +1,177 @@
+package statusline
+
+import (
+	"sort"
+	"strings"
+	"unicode"
+)
+
+// Segment 代表 status line 的一個顯示段落。
+// Priority 越小越重要，截斷時從大到小移除。
+type Segment struct {
+	Content  string
+	Priority int
+}
+
+// VisibleWidth 計算字串的可見欄位寬度，
+// 跳過 ANSI escape sequences，emoji/寬字元算 2 欄。
+func VisibleWidth(s string) int {
+	width := 0
+	inEscape := false
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+		if inEscape {
+			// CSI 序列以字母結束（@-~，即 0x40-0x7E）
+			if r >= 0x40 && r <= 0x7E {
+				inEscape = false
+			}
+			continue
+		}
+		if r == '\033' && i+1 < len(runes) && runes[i+1] == '[' {
+			inEscape = true
+			i++ // 跳過 '['
+			continue
+		}
+		width += runeWidth(r)
+	}
+	return width
+}
+
+// runeWidth 回傳單一 rune 的顯示寬度。
+func runeWidth(r rune) int {
+	// 控制字元
+	if r < 0x20 || (r >= 0x7F && r < 0xA0) {
+		return 0
+	}
+	// 組合用字元（零寬）
+	if unicode.Is(unicode.Mn, r) || unicode.Is(unicode.Me, r) || unicode.Is(unicode.Cf, r) {
+		return 0
+	}
+	// 全形與寬字元範圍（含 CJK、emoji）
+	if isWide(r) {
+		return 2
+	}
+	return 1
+}
+
+// isWide 判斷是否為佔 2 欄的字元。
+func isWide(r rune) bool {
+	// East Asian Wide / Fullwidth 範圍
+	switch {
+	case r >= 0x1100 && r <= 0x115F: // Hangul Jamo
+		return true
+	case r >= 0x2E80 && r <= 0x303E: // CJK Radicals / Kangxi
+		return true
+	case r >= 0x3041 && r <= 0x33BF: // Japanese / CJK
+		return true
+	case r >= 0x33FF && r <= 0xA4CF: // CJK Unified
+		return true
+	case r >= 0xA960 && r <= 0xA97F: // Hangul
+		return true
+	case r >= 0xAC00 && r <= 0xD7FF: // Hangul Syllables
+		return true
+	case r >= 0xF900 && r <= 0xFAFF: // CJK Compatibility
+		return true
+	case r >= 0xFE10 && r <= 0xFE1F: // Vertical Forms
+		return true
+	case r >= 0xFE30 && r <= 0xFE6F: // CJK Compatibility Forms
+		return true
+	case r >= 0xFF00 && r <= 0xFF60: // Fullwidth Forms
+		return true
+	case r >= 0xFFE0 && r <= 0xFFE6: // Fullwidth Signs
+		return true
+	case r >= 0x1B000 && r <= 0x1B0FF: // Kana Supplement
+		return true
+	case r >= 0x1F004 && r <= 0x1F0CF: // Playing Cards etc.
+		return true
+	case r >= 0x1F300 && r <= 0x1F9FF: // Misc Symbols & Emoji (📂 💛 💰 ⚡ 🌸 💠 🔇 💬 ⚠ etc.)
+		return true
+	case r >= 0x20000 && r <= 0x2FFFD: // CJK Extension B+
+		return true
+	case r >= 0x30000 && r <= 0x3FFFD: // CJK Extension G+
+		return true
+	}
+	return false
+}
+
+// TruncateLine 將 segments 依優先級截斷至 maxWidth 欄寬以內。
+// 若全部段落都放得下，直接串接回傳。
+// 若超出，從優先級最高的數字（最不重要）開始移除段落，
+// 直到符合寬度或只剩優先級 1 的段落為止。
+// 被截斷時在末尾加 「…」。
+func TruncateLine(segments []Segment, maxWidth int) string {
+	if maxWidth <= 0 {
+		maxWidth = 120
+	}
+
+	// 過濾空段落
+	var active []Segment
+	for _, s := range segments {
+		if s.Content != "" {
+			active = append(active, s)
+		}
+	}
+
+	// 計算總寬度
+	total := 0
+	for _, s := range active {
+		total += VisibleWidth(s.Content)
+	}
+
+	if total <= maxWidth {
+		return joinSegments(active)
+	}
+
+	// 按優先級降序排列（數字大 = 優先級低 = 先移除）
+	type indexed struct {
+		seg Segment
+		idx int
+	}
+	indexed_segs := make([]indexed, len(active))
+	for i, s := range active {
+		indexed_segs[i] = indexed{s, i}
+	}
+	sort.SliceStable(indexed_segs, func(i, j int) bool {
+		return indexed_segs[i].seg.Priority > indexed_segs[j].seg.Priority
+	})
+
+	ellipsis := "…"
+	ellipsisWidth := VisibleWidth(ellipsis)
+
+	// 逐步移除最低優先級段落
+	removed := make(map[int]bool)
+	for _, item := range indexed_segs {
+		if total+ellipsisWidth <= maxWidth {
+			break
+		}
+		// 不移除最高優先級（Priority == 1）
+		if item.seg.Priority <= 1 {
+			break
+		}
+		removed[item.idx] = true
+		total -= VisibleWidth(item.seg.Content)
+	}
+
+	// 重組保留的段落（維持原順序）
+	var kept []Segment
+	for i, s := range active {
+		if !removed[i] {
+			kept = append(kept, s)
+		}
+	}
+
+	result := joinSegments(kept)
+	if len(removed) > 0 {
+		result += ellipsis
+	}
+	return result
+}
+
+func joinSegments(segs []Segment) string {
+	var sb strings.Builder
+	for _, s := range segs {
+		sb.WriteString(s.Content)
+	}
+	return sb.String()
+}

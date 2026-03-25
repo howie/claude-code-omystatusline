@@ -309,14 +309,30 @@ func main() {
 		sessionDisplay = ""
 	}
 
-	// Line 1: 主要狀態列
-	fmt.Printf("%s[%s] 📂 %s%s%s%s%s%s%s%s%s%s%s%s\n",
-		statusline.ColorReset, modelDisplay, projectName,
-		sessionNameDisplay, gitDisplay,
-		contextUsage, speedDisplay, autocompactDisplay,
-		linesDisplay,
-		sep.Divider, sessionDisplay, costDisplay, configInfoDisplay,
-		statusline.ColorReset)
+	// 偵測終端寬度
+	termWidth := terminal.Width()
+
+	// Session time 與前導分隔符合併為一個段落，避免移除 session 後留下孤立分隔符
+	sessionWithDivider := ""
+	if sessionDisplay != "" {
+		sessionWithDivider = sep.Divider + sessionDisplay
+	}
+
+	// Line 1: 主要狀態列（段落優先級截斷）
+	line1Segments := []statusline.Segment{
+		{Content: fmt.Sprintf("%s[%s] 📂 %s", statusline.ColorReset, modelDisplay, projectName), Priority: 1},
+		{Content: sessionNameDisplay, Priority: 10},
+		{Content: gitDisplay, Priority: 3},
+		{Content: contextUsage, Priority: 4},
+		{Content: speedDisplay, Priority: 7},
+		{Content: autocompactDisplay, Priority: 8},
+		{Content: linesDisplay, Priority: 9},
+		{Content: sessionWithDivider, Priority: 5},
+		{Content: costDisplay, Priority: 6},
+		{Content: configInfoDisplay, Priority: 11},
+		{Content: statusline.ColorReset, Priority: 0},
+	}
+	fmt.Println(statusline.TruncateLine(line1Segments, termWidth))
 
 	// Line 2: 工具行（expanded 模式）
 	if cfg.DisplayMode == "expanded" {
@@ -349,8 +365,10 @@ func main() {
 			compactParts = append(compactParts, apiLimits)
 		}
 		if len(compactParts) > 0 {
-			fmt.Printf("%s%s%s\n", statusline.ColorDim,
+			compactLine := fmt.Sprintf("%s%s%s", statusline.ColorDim,
 				joinWithSep(compactParts, sep.Divider), statusline.ColorReset)
+			compactSegs := []statusline.Segment{{Content: compactLine, Priority: 1}}
+			fmt.Println(statusline.TruncateLine(compactSegs, termWidth))
 		}
 	}
 
