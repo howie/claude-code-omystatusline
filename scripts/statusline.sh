@@ -227,7 +227,7 @@ extract_last_user_message() {
 
                     # 過濾無效內容
                     if (match(content, /^[\\[\\{].*[\\]\\}]$/) ||
-                        match(content, /<(local-command-stdout|command-name|command-message|command-args)>/) ||
+                        match(content, /<(local-command-stdout|local-command-caveat|command-name|command-message|command-args)>/) ||
                         match(content, /^Caveat:/) ||
                         content == "" || content == "null") {
                         next
