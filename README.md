@@ -11,7 +11,7 @@
 
 > A rich, context-aware status line for Claude Code that keeps you informed about what really matters.
 
-**📢 Version 2.0**: New plugin architecture with organized directory structure and support for Claude Code v2.0.25+ configuration format!
+**📢 Version 2.1**: Major feature expansion with 10 new display sections, gradient progress bar, configurable separators, terminal capability detection, and auto-truncation to fit terminal width!
 
 [English](#english) | [中文](#chinese)
 
@@ -67,13 +67,15 @@ The idea: *If these tools can show relevant context in every view, why can't Cla
 **Why it matters**: Helps you understand actual usage patterns, manage billing expectations, and maintain healthy work sessions.
 
 ### 🎨 At-a-Glance Context
-Every status line shows:
+Every status line shows (expanded mode):
 ```
-[💠 Sonnet 4.5] 📂 my-project ⚡ main | ██████░░░░ 65% 130k | 2h45m [2 sessions]
+[💠 Sonnet 4.6] 📂 my-project ⚡ main * ↑2 | ██████░░░░ 65% 130k | 2h45m [2 sessions] | 💰 $3.42 | +128/-45 | 🚀 45 t/s
+⚙️ 3 tools | 🤖 2 agents | ✅ 2/5 todos | API: 42% (5h) 18% (7d)
 ｜Your last message appears here for context...
 ```
 
-**Model badge** → **Project** → **Git branch** → **Token usage** → **Time tracking** → **Your message**
+**Model** → **Git branch+status** → **Token usage** → **Time** → **Cost** → **Lines changed** → **Speed**
+→ **Active tools** → **Subagents** → **Todos** → **API quota** → **Your message**
 
 All the information you need, updated with every interaction.
 
@@ -81,13 +83,63 @@ All the information you need, updated with every interaction.
 
 - ✅ **Model Display**: Shows current Claude model (Opus 💛, Sonnet 💠, Haiku 🌸)
 - ✅ **Project Info**: Current directory name for orientation
-- ✅ **Git Integration**: Branch, worktree detection, smart caching
-- ✅ **Context Tracking**: Visual progress bar, percentage, formatted token count
+- ✅ **Git Integration**: Branch, worktree detection, dirty indicator, ahead/behind counts
+- ✅ **Context Tracking**: Gradient progress bar, percentage, formatted token count
 - ✅ **Session Time**: Daily accumulated time, multi-session detection
+- ✅ **Cost Display**: Session cost with color thresholds (< $5 dim, ≥ $5 yellow, ≥ $10 red)
+- ✅ **Lines Changed**: +N/-M lines added/removed in current session
+- ✅ **Output Speed**: Real-time tokens/sec calculation
+- ✅ **Active Tools**: Running tools with spinner animation and target path
+- ✅ **Subagent Tracking**: Running subagents with type, model, and elapsed time
+- ✅ **Todo Tracking**: In-progress todo items with progress count
+- ✅ **API Limits**: 5h/7d quota display via Anthropic OAuth API
+- ✅ **Autocompact Detection**: Visual indicator when context compression triggers
 - ✅ **User Message**: Last message displayed for quick context recall
+- ✅ **Configurable Display**: Toggle sections, choose expanded/compact mode, Powerline/Nerd Font separators
+- ✅ **Terminal Detection**: Auto-detects True Color / 256-color / ASCII capabilities
+- ✅ **Auto-Truncation**: Status line truncates to fit terminal width
 - ✅ **Performance**: Concurrent goroutines for sub-100ms status updates
 - 🔔 **Audio Notifications**: Play sounds when work needs attention (optional feature) - [Setup Guide](docs/features/audio-notifications/README.md)
 - 📁 **Modular Architecture**: Clean separation of concerns with pkg/ for reusable packages
+
+## Configuration
+
+After installation, customize the display by editing `~/.claude/omystatusline/config.json`:
+
+```json
+{
+  "display_mode": "expanded",
+  "separator_style": "pipe",
+  "sections": {
+    "model": true,
+    "git": true,
+    "git_status": true,
+    "context": true,
+    "session": true,
+    "cost": true,
+    "tools": true,
+    "agents": true,
+    "todo": true,
+    "api_limits": true,
+    "speed": true,
+    "session_name": true,
+    "config_info": true,
+    "autocompact": true,
+    "user_message": true
+  }
+}
+```
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `display_mode` | `"expanded"` / `"compact"` | Multi-line expanded (default) or single-line compact |
+| `separator_style` | `"pipe"` / `"powerline"` / `"nerdfont"` | Section separator style |
+
+**Environment variable overrides:**
+- `CLAUDE_STATUSLINE_ASCII=1` — Force ASCII progress bar `[####------]`
+- `CLAUDE_STATUSLINE_POWERLINE=1` — Use Powerline separators
+- `CLAUDE_STATUSLINE_NERDFONT=1` — Use Nerd Font separators
+- `STATUSLINE_MAX_TOKENS=1000000` — Set max token limit (default: 200k)
 
 ## Installation
 
@@ -271,13 +323,15 @@ Apache License 2.0 - customize freely!
 **為什麼重要**：幫助你了解實際使用模式、管理計費預期，並維持健康的工作 session。
 
 ### 🎨 一目了然的上下文
-每個狀態列都會顯示：
+每個狀態列都會顯示（展開模式）：
 ```
-[💠 Sonnet 4.5] 📂 my-project ⚡ main | ██████░░░░ 65% 130k | 2h45m [2 sessions]
+[💠 Sonnet 4.6] 📂 my-project ⚡ main * ↑2 | ██████░░░░ 65% 130k | 2h45m [2 sessions] | 💰 $3.42 | +128/-45 | 🚀 45 t/s
+⚙️ 3 tools | 🤖 2 agents | ✅ 2/5 todos | API: 42% (5h) 18% (7d)
 ｜你的最後一則訊息會顯示在這裡作為上下文...
 ```
 
-**模型徽章** → **專案** → **Git 分支** → **Token 使用** → **時間追蹤** → **你的訊息**
+**模型** → **Git 分支+狀態** → **Token 使用** → **時間** → **費用** → **行數變化** → **速度**
+→ **執行中工具** → **子代理** → **待辦事項** → **API 配額** → **你的訊息**
 
 所有你需要的資訊，隨著每次互動更新。
 
@@ -285,12 +339,62 @@ Apache License 2.0 - customize freely!
 
 - ✅ **模型顯示**：顯示當前 Claude 模型（Opus 💛、Sonnet 💠、Haiku 🌸）
 - ✅ **專案資訊**：當前目錄名稱以便定位
-- ✅ **Git 整合**：分支、worktree 偵測、智慧快取
-- ✅ **Context 追蹤**：視覺化進度條、百分比、格式化的 token 計數
+- ✅ **Git 整合**：分支、worktree 偵測、髒狀態指示、超前/落後計數
+- ✅ **Context 追蹤**：漸層進度條、百分比、格式化的 token 計數
 - ✅ **Session 時間**：每日累積時間、多 session 偵測
+- ✅ **費用顯示**：Session 費用，顏色分級（< $5 預設、≥ $5 黃色、≥ $10 紅色）
+- ✅ **行數變化**：顯示本次 session 新增/刪除的程式碼行數 (+N/-M)
+- ✅ **輸出速度**：即時 tokens/sec 計算
+- ✅ **執行中工具**：顯示正在執行的工具及目標路徑
+- ✅ **子代理追蹤**：顯示執行中子代理的類型、模型和已耗時間
+- ✅ **待辦追蹤**：進行中的 todo 項目及進度計數
+- ✅ **API 配額**：透過 Anthropic OAuth API 顯示 5h/7d 用量
+- ✅ **自動壓縮偵測**：context 壓縮觸發時的視覺指示
 - ✅ **使用者訊息**：顯示最後一則訊息以快速回憶上下文
+- ✅ **可自訂顯示**：切換各區段、選擇展開/精簡模式、Powerline/Nerd Font 分隔符
+- ✅ **終端偵測**：自動偵測 True Color / 256 色 / ASCII 能力
+- ✅ **自動截斷**：狀態列自動截斷以符合終端寬度
 - ✅ **效能**：並行 goroutine 讓狀態更新在 100ms 內完成
 - 🔔 **聲音提醒**：當工作需要介入時播放提示音（選用功能）- [設定指南](docs/features/audio-notifications/README.md)
+
+## 配置
+
+安裝後，編輯 `~/.claude/omystatusline/config.json` 來自訂顯示內容：
+
+```json
+{
+  "display_mode": "expanded",
+  "separator_style": "pipe",
+  "sections": {
+    "model": true,
+    "git": true,
+    "git_status": true,
+    "context": true,
+    "session": true,
+    "cost": true,
+    "tools": true,
+    "agents": true,
+    "todo": true,
+    "api_limits": true,
+    "speed": true,
+    "session_name": true,
+    "config_info": true,
+    "autocompact": true,
+    "user_message": true
+  }
+}
+```
+
+| 選項 | 可選值 | 說明 |
+|------|--------|------|
+| `display_mode` | `"expanded"` / `"compact"` | 多行展開（預設）或單行精簡模式 |
+| `separator_style` | `"pipe"` / `"powerline"` / `"nerdfont"` | 區段分隔符風格 |
+
+**環境變數覆蓋：**
+- `CLAUDE_STATUSLINE_ASCII=1` — 強制 ASCII 進度條 `[####------]`
+- `CLAUDE_STATUSLINE_POWERLINE=1` — 使用 Powerline 分隔符
+- `CLAUDE_STATUSLINE_NERDFONT=1` — 使用 Nerd Font 分隔符
+- `STATUSLINE_MAX_TOKENS=1000000` — 設定最大 token 上限（預設：200k）
 
 ## 安裝
 
@@ -453,8 +557,9 @@ Apache License 2.0 - 歡迎自由客製化！
 ## Screenshot Preview
 
 ```
-[💠 Sonnet 4.5] 📂 claude-code-omystatusline ⚡ main | ██████░░░░ 65% 130k | 2h45m
-｜Write bilingual README explaining motivation and features
+[💠 Sonnet 4.6] 📂 claude-code-omystatusline ⚡ main * | 🟩🟩🟩🟨🟨░░░░░ 45% 90k | 1h23m | 💰 $2.15 | +89/-12 | 🚀 38 t/s
+⚙️ 1 tool | ✅ 1/3 todos
+｜Update README and release notes for v2.1.0
 ```
 
 ## FAQ
