@@ -525,10 +525,10 @@ install_files() {
     chmod +x "$INSTALL_DIR/plugins/voice-reminder/scripts/test-voice-reminder.sh"
 
     # 複製 slash commands 並建立符號連結
-    cp .claude/commands/voice-reminder-*.md "$INSTALL_DIR/plugins/voice-reminder/commands/"
+    cp commands/voice-reminder-*.md "$INSTALL_DIR/plugins/voice-reminder/commands/"
 
     # 建立符號連結到 ~/.claude/commands/
-    for cmd_file in .claude/commands/voice-reminder-*.md; do
+    for cmd_file in commands/voice-reminder-*.md; do
         cmd_name=$(basename "$cmd_file")
         ln -sf "$INSTALL_DIR/plugins/voice-reminder/commands/$cmd_name" "$CLAUDE_DIR/commands/$cmd_name"
     done
