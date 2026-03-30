@@ -24,6 +24,7 @@ var (
 type Config struct {
 	DisplayMode    string            `json:"display_mode"`    // "expanded" or "compact"
 	SeparatorStyle string            `json:"separator_style"` // "pipe", "powerline", "nerdfont"
+	OverflowMode   string            `json:"overflow_mode"`   // "wrap" or "truncate" (default: "wrap")
 	Sections       SectionVisibility `json:"sections"`
 }
 
@@ -70,7 +71,8 @@ type SectionVisibility struct {
 // DefaultConfig 返回預設配置（所有區段可見）
 func DefaultConfig() *Config {
 	return &Config{
-		DisplayMode: "expanded",
+		DisplayMode:  "expanded",
+		OverflowMode: "wrap",
 		Sections: SectionVisibility{
 			Model:       true,
 			Git:         true,
