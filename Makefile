@@ -155,14 +155,11 @@ lint:
 	@echo "✓ gofmt 檢查通過！"
 	@echo "正在執行 golangci-lint..."
 	@if ! command -v golangci-lint > /dev/null 2>&1; then \
-		echo "❌ golangci-lint 未安裝"; \
-		echo "請執行以下命令安裝："; \
-		echo "  brew install golangci-lint  # macOS"; \
-		echo "  或訪問 https://golangci-lint.run/usage/install/"; \
-		exit 1; \
+		echo "⚠ golangci-lint 未安裝，跳過 lint 檢查"; \
+		echo "  建議安裝：asdf plugin add golangci-lint && asdf install golangci-lint latest"; \
+	else \
+		golangci-lint run --timeout=5m && echo "✓ Linting 完成！"; \
 	fi
-	@golangci-lint run --timeout=5m
-	@echo "✓ Linting 完成！"
 
 # 安裝 Git hooks
 install-hooks:

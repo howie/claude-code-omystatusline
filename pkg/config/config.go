@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -24,7 +26,7 @@ var (
 type Config struct {
 	DisplayMode    string            `json:"display_mode"`    // "expanded" or "compact"
 	SeparatorStyle string            `json:"separator_style"` // "pipe", "powerline", "nerdfont"
-	OverflowMode   string            `json:"overflow_mode"`   // "wrap" or "truncate" (default: "wrap")
+	OverflowMode   string            `json:"overflow_mode"`   // "wrap" or "truncate" (default: "wrap"); unknown values fall back to "wrap" with a stderr warning
 	Sections       SectionVisibility `json:"sections"`
 }
 
@@ -99,12 +101,16 @@ func Load() *Config {
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "statusline: could not determine home directory, using defaults: %v\n", err)
 		return cfg
 	}
 
 	configPath := filepath.Join(homeDir, ".claude", "omystatusline", "config.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "statusline: could not read config file %s: %v\n", configPath, err)
+		}
 		return cfg
 	}
 

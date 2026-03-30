@@ -65,7 +65,7 @@ func isWide(r rune) bool {
 		return true
 	case r >= 0x3041 && r <= 0x33BF: // Japanese / CJK
 		return true
-	case r >= 0x33FF && r <= 0xA4CF: // CJK Unified
+	case r >= 0x33FF && r <= 0xA4CF: // CJK Compat tail + Extension A + Unified Ideographs + Yi
 		return true
 	case r >= 0xA960 && r <= 0xA97F: // Hangul
 		return true
@@ -98,7 +98,8 @@ func isWide(r rune) bool {
 // TruncateLine 將 segments 依優先級截斷至 maxWidth 欄寬以內。
 // 若全部段落都放得下，直接串接回傳。
 // 若超出，從優先級最高的數字（最不重要）開始移除段落，
-// 直到符合寬度或只剩優先級 1 的段落為止。
+// 直到符合寬度，或下一個待移除段落的優先級 ≤ 1 為止。
+// Priority 0（不可見控制字元，如 ColorReset）與 Priority 1 同樣受保護。
 // 被截斷時在末尾加 「…」。
 func TruncateLine(segments []Segment, maxWidth int) string {
 	if maxWidth <= 0 {
@@ -180,6 +181,7 @@ func joinSegments(segs []Segment) string {
 // 超出 maxWidth 時，在段落邊界換行到第二行（前綴 1 格縮排）；
 // 若兩行仍不足，對第二行以優先級截斷。
 // 若全部放得下，直接回傳單行（與 TruncateLine 相同）。
+// 特殊情形：若首個段落本身即超出 maxWidth，仍強制放入第一行不截斷（最小保證）。
 func WrapLine(segments []Segment, maxWidth int) string {
 	if maxWidth <= 0 {
 		maxWidth = 120
@@ -247,7 +249,11 @@ func WrapLine(segments []Segment, maxWidth int) string {
 	// 若第二行超出：以優先級截斷
 	var line2Str string
 	if line2Total > maxWidth {
-		line2Str = line2Prefix + TruncateLine(line2, maxWidth-prefixWidth)
+		line2MaxWidth := maxWidth - prefixWidth
+		if line2MaxWidth <= 0 {
+			line2MaxWidth = maxWidth
+		}
+		line2Str = line2Prefix + TruncateLine(line2, line2MaxWidth)
 	} else {
 		line2Str = line2Prefix + joinSegments(line2)
 	}
