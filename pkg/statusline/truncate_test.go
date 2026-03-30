@@ -208,7 +208,7 @@ func TestWrapLineWithAnsiColors(t *testing.T) {
 	// 模擬真實段落：model(21) + " | ⚡ main"(9) = 30 > 25，git 換到第二行
 	// git 以 " | " 開頭，觸發 stripLeadingDivider，line2 = " ⚡ main"（單空格前綴）
 	model := "\033[0m[💛 Opus 4.6] 📂 proj\033[0m" // visible: 21
-	git := " | ⚡ main"                            // visible: 9, starts with " | "
+	git := " | ⚡ main"                           // visible: 9, starts with " | "
 	segs := []Segment{
 		{Content: model, Priority: 1},
 		{Content: git, Priority: 3},
