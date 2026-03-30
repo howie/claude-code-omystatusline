@@ -378,12 +378,19 @@ func main() {
 	}
 }
 
-// formatSegments applies the configured overflow mode (wrap or truncate) to segments.
+// formatSegments applies the configured overflow mode to segments.
+// "truncate" calls TruncateLine; "wrap" and any unknown value call WrapLine.
+// Unknown values emit a warning to stderr and fall back to "wrap".
 func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode string) string {
-	if overflowMode == "truncate" {
+	switch overflowMode {
+	case "truncate":
 		return statusline.TruncateLine(segments, maxWidth)
+	case "wrap":
+		return statusline.WrapLine(segments, maxWidth)
+	default:
+		fmt.Fprintf(os.Stderr, "statusline: unknown overflow_mode %q, falling back to \"wrap\"\n", overflowMode)
+		return statusline.WrapLine(segments, maxWidth)
 	}
-	return statusline.WrapLine(segments, maxWidth)
 }
 
 func joinWithSep(parts []string, sep string) string {
