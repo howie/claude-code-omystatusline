@@ -175,3 +175,92 @@ func joinSegments(segs []Segment) string {
 	}
 	return sb.String()
 }
+
+// WrapLine 將 segments 依終端寬度智慧換行。
+// 超出 maxWidth 時，在段落邊界換行到第二行（前綴 1 格縮排）；
+// 若兩行仍不足，對第二行以優先級截斷。
+// 若全部放得下，直接回傳單行（與 TruncateLine 相同）。
+func WrapLine(segments []Segment, maxWidth int) string {
+	if maxWidth <= 0 {
+		maxWidth = 120
+	}
+
+	// 過濾空段落
+	var active []Segment
+	for _, s := range segments {
+		if s.Content != "" {
+			active = append(active, s)
+		}
+	}
+	if len(active) == 0 {
+		return ""
+	}
+
+	// 計算總寬度
+	total := 0
+	for _, s := range active {
+		total += VisibleWidth(s.Content)
+	}
+
+	// 全部放得下：直接回傳單行
+	if total <= maxWidth {
+		return joinSegments(active)
+	}
+
+	// 分行：按順序將段落填入第一行，超出後移至第二行
+	var line1, line2 []Segment
+	currentWidth := 0
+	for _, s := range active {
+		w := VisibleWidth(s.Content)
+		if len(line2) == 0 && currentWidth+w <= maxWidth {
+			line1 = append(line1, s)
+			currentWidth += w
+		} else {
+			line2 = append(line2, s)
+		}
+	}
+
+	// 若第一行完全為空（首個段落本身超出），強制放入
+	if len(line1) == 0 && len(line2) > 0 {
+		line1 = append(line1, line2[0])
+		line2 = line2[1:]
+	}
+
+	// 若無第二行，回傳單行
+	if len(line2) == 0 {
+		return joinSegments(line1)
+	}
+
+	// 第二行首個段落去掉前導分隔符（避免孤立 | ）
+	first := line2[0]
+	line2[0] = Segment{Content: stripLeadingDivider(first.Content), Priority: first.Priority}
+
+	const line2Prefix = " "
+	prefixWidth := VisibleWidth(line2Prefix)
+
+	// 計算第二行寬度
+	line2Total := prefixWidth
+	for _, s := range line2 {
+		line2Total += VisibleWidth(s.Content)
+	}
+
+	// 若第二行超出：以優先級截斷
+	var line2Str string
+	if line2Total > maxWidth {
+		line2Str = line2Prefix + TruncateLine(line2, maxWidth-prefixWidth)
+	} else {
+		line2Str = line2Prefix + joinSegments(line2)
+	}
+
+	return joinSegments(line1) + "\n" + line2Str
+}
+
+// stripLeadingDivider 去掉段落開頭的常見分隔符前綴（含兩側空白）。
+func stripLeadingDivider(s string) string {
+	for _, prefix := range []string{" | ", " \ue0b1 ", " \ue0b0 ", " │ "} {
+		if strings.HasPrefix(s, prefix) {
+			return s[len(prefix):]
+		}
+	}
+	return s
+}

@@ -332,7 +332,11 @@ func main() {
 		{Content: configInfoDisplay, Priority: 11},
 		{Content: statusline.ColorReset, Priority: 0},
 	}
-	fmt.Println(statusline.TruncateLine(line1Segments, termWidth))
+	if cfg.OverflowMode == "truncate" {
+		fmt.Println(statusline.TruncateLine(line1Segments, termWidth))
+	} else {
+		fmt.Println(statusline.WrapLine(line1Segments, termWidth))
+	}
 
 	// Line 2: 工具行（expanded 模式）
 	if cfg.DisplayMode == "expanded" {
@@ -368,7 +372,11 @@ func main() {
 			compactLine := fmt.Sprintf("%s%s%s", statusline.ColorDim,
 				joinWithSep(compactParts, sep.Divider), statusline.ColorReset)
 			compactSegs := []statusline.Segment{{Content: compactLine, Priority: 1}}
-			fmt.Println(statusline.TruncateLine(compactSegs, termWidth))
+			if cfg.OverflowMode == "truncate" {
+				fmt.Println(statusline.TruncateLine(compactSegs, termWidth))
+			} else {
+				fmt.Println(statusline.WrapLine(compactSegs, termWidth))
+			}
 		}
 	}
 
