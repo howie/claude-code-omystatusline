@@ -332,11 +332,7 @@ func main() {
 		{Content: configInfoDisplay, Priority: 11},
 		{Content: statusline.ColorReset, Priority: 0},
 	}
-	if cfg.OverflowMode == "truncate" {
-		fmt.Println(statusline.TruncateLine(line1Segments, termWidth))
-	} else {
-		fmt.Println(statusline.WrapLine(line1Segments, termWidth))
-	}
+	fmt.Println(formatSegments(line1Segments, termWidth, cfg.OverflowMode))
 
 	// Line 2: 工具行（expanded 模式）
 	if cfg.DisplayMode == "expanded" {
@@ -372,11 +368,7 @@ func main() {
 			compactLine := fmt.Sprintf("%s%s%s", statusline.ColorDim,
 				joinWithSep(compactParts, sep.Divider), statusline.ColorReset)
 			compactSegs := []statusline.Segment{{Content: compactLine, Priority: 1}}
-			if cfg.OverflowMode == "truncate" {
-				fmt.Println(statusline.TruncateLine(compactSegs, termWidth))
-			} else {
-				fmt.Println(statusline.WrapLine(compactSegs, termWidth))
-			}
+			fmt.Println(formatSegments(compactSegs, termWidth, cfg.OverflowMode))
 		}
 	}
 
@@ -384,6 +376,14 @@ func main() {
 	if userMessage != "" {
 		fmt.Print(userMessage)
 	}
+}
+
+// formatSegments applies the configured overflow mode (wrap or truncate) to segments.
+func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode string) string {
+	if overflowMode == "truncate" {
+		return statusline.TruncateLine(segments, maxWidth)
+	}
+	return statusline.WrapLine(segments, maxWidth)
 }
 
 func joinWithSep(parts []string, sep string) string {
