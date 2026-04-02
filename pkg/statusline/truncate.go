@@ -237,7 +237,7 @@ func WrapLine(segments []Segment, maxWidth int) string {
 	first := line2[0]
 	line2[0] = Segment{Content: stripLeadingDivider(first.Content), Priority: first.Priority}
 
-	const line2Prefix = " "
+	const line2Prefix = "↳ "
 	prefixWidth := VisibleWidth(line2Prefix)
 
 	// 計算第二行寬度

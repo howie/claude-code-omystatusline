@@ -82,7 +82,7 @@ func GetBranch(dir string) string {
 		// 如果 git-dir 和 git-common-dir 不同，表示在 worktree 中
 		if absGitDir != absCommonDir {
 			icon = "🔀"
-			worktreeLabel = " (worktree)"
+			worktreeLabel = " (wt)"
 		}
 	}
 
@@ -97,13 +97,15 @@ func GetBranch(dir string) string {
 	return result
 }
 
-// FormatWorktreeBranch 格式化結構化 worktree 資料的分支顯示
+// FormatWorktreeBranch 格式化結構化 worktree 資料的分支顯示。
+// 當 branch 名稱已包含 worktree name（或反過來）時，用簡短 (wt) 標籤避免重複；
+// 否則顯示完整 (worktree: name)。
 func FormatWorktreeBranch(name, branch string) string {
 	if branch == "" {
 		return ""
 	}
-	label := " (worktree)"
-	if name != "" {
+	label := " (wt)"
+	if name != "" && !strings.Contains(branch, name) && !strings.Contains(name, branch) {
 		label = fmt.Sprintf(" (worktree: %s)", name)
 	}
 	return formatBranch("🔀", branch, label)
