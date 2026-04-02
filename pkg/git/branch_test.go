@@ -105,12 +105,12 @@ func TestGetBranch_ActualWorktree(t *testing.T) {
 	// 獲取 worktree 的分支資訊
 	result := GetBranch(worktreePath)
 
-	// 驗證：實際的 worktree 應該使用 🔀 圖示並有 (worktree) 標籤
+	// 驗證：實際的 worktree 應該使用 🔀 圖示並有 (wt) 標籤
 	if !strings.Contains(result, "🔀") {
 		t.Errorf("Expected 🔀 icon for worktree, got: %s", result)
 	}
-	if !strings.Contains(result, "(worktree)") {
-		t.Errorf("Worktree should have (worktree) label, got: %s", result)
+	if !strings.Contains(result, "(wt)") {
+		t.Errorf("Worktree should have (wt) label, got: %s", result)
 	}
 	if !strings.Contains(result, "test-branch") {
 		t.Errorf("Expected branch name 'test-branch' in result, got: %s", result)
@@ -171,6 +171,94 @@ func TestGetBranch_VerifyGitCommands(t *testing.T) {
 	// 驗證：應該返回正確的分支名稱
 	if !strings.Contains(result, "feature-branch") {
 		t.Errorf("Expected branch name 'feature-branch' in result, got: %s", result)
+	}
+}
+
+func TestFormatWorktreeBranch(t *testing.T) {
+	tests := []struct {
+		name        string
+		wtName      string
+		branch      string
+		wantShort   bool   // true = expect (wt), false = expect (worktree: name)
+		wantContain string // branch name should appear in result
+	}{
+		{
+			name:        "name equals branch — smart-omit",
+			wtName:      "feature",
+			branch:      "feature",
+			wantShort:   true,
+			wantContain: "feature",
+		},
+		{
+			name:        "branch contains name — smart-omit",
+			wtName:      "fix",
+			branch:      "hotfix-deploy",
+			wantShort:   true,
+			wantContain: "hotfix-deploy",
+		},
+		{
+			name:        "name contains branch — smart-omit",
+			wtName:      "worktree-fix-story-gen-flow",
+			branch:      "fix-story-gen-flow",
+			wantShort:   true,
+			wantContain: "fix-story-gen-flow",
+		},
+		{
+			name:        "no overlap — full label",
+			wtName:      "hotfix",
+			branch:      "main",
+			wantShort:   false,
+			wantContain: "main",
+		},
+		{
+			name:        "empty name — always short",
+			wtName:      "",
+			branch:      "feature",
+			wantShort:   true,
+			wantContain: "feature",
+		},
+		{
+			name:        "empty branch — returns empty",
+			wtName:      "any",
+			branch:      "",
+			wantShort:   true, // irrelevant, result is ""
+			wantContain: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := FormatWorktreeBranch(tc.wtName, tc.branch)
+
+			if tc.branch == "" {
+				if result != "" {
+					t.Errorf("empty branch should return empty string, got %q", result)
+				}
+				return
+			}
+
+			if !strings.Contains(result, tc.wantContain) {
+				t.Errorf("expected result to contain %q, got %q", tc.wantContain, result)
+			}
+			if !strings.Contains(result, "🔀") {
+				t.Errorf("expected 🔀 icon, got %q", result)
+			}
+			if tc.wantShort {
+				if !strings.Contains(result, "(wt)") {
+					t.Errorf("expected short (wt) label, got %q", result)
+				}
+				if strings.Contains(result, "worktree:") {
+					t.Errorf("expected no full worktree label, got %q", result)
+				}
+			} else {
+				if strings.Contains(result, "(wt)") {
+					t.Errorf("expected full (worktree: name) label, got %q", result)
+				}
+				if !strings.Contains(result, "(worktree: "+tc.wtName+")") {
+					t.Errorf("expected (worktree: %s) in result, got %q", tc.wtName, result)
+				}
+			}
+		})
 	}
 }
 

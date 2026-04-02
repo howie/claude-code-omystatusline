@@ -127,8 +127,8 @@ func TestWrapLineWrapsToSecondLine(t *testing.T) {
 	if VisibleWidth(lines[0]) > 12 {
 		t.Errorf("line1 visible width %d exceeds maxWidth 12: %q", VisibleWidth(lines[0]), lines[0])
 	}
-	if !strings.HasPrefix(lines[1], " ") {
-		t.Errorf("line2 should start with single-space prefix, got %q", lines[1])
+	if !strings.HasPrefix(lines[1], "↳ ") {
+		t.Errorf("line2 should start with continuation prefix \"↳ \", got %q", lines[1])
 	}
 	if !strings.Contains(lines[1], "BBBB") {
 		t.Errorf("line2 should contain BBBB, got %q", lines[1])
@@ -145,12 +145,12 @@ func TestWrapLineStripsLeadingDivider(t *testing.T) {
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 lines, got %d: %q", len(lines), got)
 	}
-	// " | " 應被去掉，改為前綴 " "
+	// " | " 應被去掉，改為前綴 "↳ "
 	if strings.HasPrefix(lines[1], " | ") {
 		t.Errorf("line2 should not start with \" | \", got %q", lines[1])
 	}
-	if !strings.HasPrefix(lines[1], " ") {
-		t.Errorf("line2 should start with single-space prefix, got %q", lines[1])
+	if !strings.HasPrefix(lines[1], "↳ ") {
+		t.Errorf("line2 should start with continuation prefix \"↳ \", got %q", lines[1])
 	}
 	if !strings.Contains(lines[1], "BBBB") {
 		t.Errorf("line2 should still contain BBBB, got %q", lines[1])
@@ -161,7 +161,7 @@ func TestWrapLineFallbackTruncate(t *testing.T) {
 	// maxWidth=10：
 	// line1: "AAAA"(4)，" | BBBBB"(8) 4+8=12>10 → 移到 line2
 	// line2: [" | BBBBB"(P3), " | CCCCC"(P5), " | DDDDD"(P9)]
-	// line2 strip 後: "BBBBB"(5) + " | CCCCC"(8) + " | DDDDD"(8) = 21+前綴1 = 22 > 10
+	// line2 strip 後: "BBBBB"(5) + " | CCCCC"(8) + " | DDDDD"(8) = 21+前綴2("↳ ") = 23 > 10
 	// → 觸發 TruncateLine，Priority 9（DDDDD）被丟棄
 	segs := []Segment{
 		{Content: "AAAA", Priority: 1},     // 4
@@ -206,7 +206,7 @@ func TestWrapLineSingleOversizedSegment(t *testing.T) {
 
 func TestWrapLineWithAnsiColors(t *testing.T) {
 	// 模擬真實段落：model(21) + " | ⚡ main"(9) = 30 > 25，git 換到第二行
-	// git 以 " | " 開頭，觸發 stripLeadingDivider，line2 = " ⚡ main"（單空格前綴）
+	// git 以 " | " 開頭，觸發 stripLeadingDivider，line2 = "↳ ⚡ main"（↳ 續行前綴）
 	model := "\033[0m[💛 Opus 4.6] 📂 proj\033[0m" // visible: 21
 	git := " | ⚡ main"                           // visible: 9, starts with " | "
 	segs := []Segment{
@@ -221,12 +221,9 @@ func TestWrapLineWithAnsiColors(t *testing.T) {
 	if VisibleWidth(lines[0]) > 25 {
 		t.Errorf("line1 visible width %d exceeds maxWidth 25", VisibleWidth(lines[0]))
 	}
-	// stripLeadingDivider 去掉 " | "，line2Prefix 加 " "，結果為 " ⚡ main"（精確單空格）
-	if !strings.HasPrefix(lines[1], " ") {
-		t.Errorf("line2 should start with single-space prefix, got %q", lines[1])
-	}
-	if strings.HasPrefix(lines[1], "  ") {
-		t.Errorf("line2 should not start with double space (divider not stripped), got %q", lines[1])
+	// stripLeadingDivider 去掉 " | "，line2Prefix 加 "↳ "，結果為 "↳ ⚡ main"
+	if !strings.HasPrefix(lines[1], "↳ ") {
+		t.Errorf("line2 should start with continuation prefix \"↳ \", got %q", lines[1])
 	}
 	if !strings.Contains(lines[1], "main") {
 		t.Errorf("line2 should contain git branch, got %q", lines[1])

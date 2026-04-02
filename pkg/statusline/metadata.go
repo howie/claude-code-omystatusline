@@ -149,5 +149,5 @@ func FormatConfigCounts(counts *ConfigCounts) string {
 		return ""
 	}
 
-	return fmt.Sprintf("(%s)", strings.Join(parts, " "))
+	return fmt.Sprintf("(%s)", strings.Join(parts, " · "))
 }

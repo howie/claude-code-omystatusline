@@ -279,14 +279,6 @@ func FormatSessionNameDisplay(name string) string {
 	return fmt.Sprintf(" %s[%s]%s", ColorDim, name, ColorReset)
 }
 
-// FormatConfigCountsDisplay 格式化配置統計
-func FormatConfigCountsDisplay(countsStr string) string {
-	if countsStr == "" {
-		return ""
-	}
-	return fmt.Sprintf(" %s%s%s", ColorDim, countsStr, ColorReset)
-}
-
 // FormatAutocompactDisplay 格式化自動壓縮警告
 func FormatAutocompactDisplay(autocompactStr string) string {
 	if autocompactStr == "" {

@@ -300,8 +300,11 @@ func main() {
 	// Session name
 	sessionNameDisplay := statusline.FormatSessionNameDisplay(sessionName)
 
-	// Config info
-	configInfoDisplay := statusline.FormatConfigCountsDisplay(configInfo)
+	// Config info（加前導分隔符，與其他段落視覺一致）
+	configInfoDisplay := ""
+	if configInfo != "" {
+		configInfoDisplay = fmt.Sprintf("%s%s%s%s", sep.Divider, statusline.ColorDim, configInfo, statusline.ColorReset)
+	}
 
 	// 零值智慧隱藏：session time 為 "0m" 時不顯示
 	sessionDisplay := totalHours
