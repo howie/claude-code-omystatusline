@@ -60,13 +60,13 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var contextUsage string
+			var ctxData *context.ContextData
 			if lines != nil {
-				contextUsage = context.AnalyzeFromLines(lines, maxTokens)
+				ctxData = context.AnalyzeDetailedFromLines(lines, maxTokens)
 			} else {
-				contextUsage = context.Analyze(input.TranscriptPath, maxTokens)
+				ctxData = context.AnalyzeDetailed(input.TranscriptPath, maxTokens)
 			}
-			results <- statusline.Result{Type: "context", Data: contextUsage}
+			results <- statusline.Result{Type: "context", Data: ctxData}
 		}()
 	}
 
@@ -222,19 +222,21 @@ func main() {
 
 	// Phase 4: 收集結果
 	var (
-		gitBranch    string
-		gitStatusStr string
-		totalHours   string
-		contextUsage string
-		userMessage  string
-		toolsStr     string
-		agentsStr    string
-		todoStr      string
-		speedStr     string
-		autocompact  string
-		sessionName  string
-		apiLimits    string
-		configInfo   string
+		gitBranch     string
+		gitStatusStr  string
+		totalHours    string
+		contextBar    string
+		contextInfo   string
+		contextTokens int
+		userMessage   string
+		toolsStr      string
+		agentsStr     string
+		todoStr       string
+		speedStr      string
+		autocompact   string
+		sessionName   string
+		apiLimits     string
+		configInfo    string
 	)
 
 	for result := range results {
@@ -246,7 +248,11 @@ func main() {
 		case "hours":
 			totalHours = result.Data.(string)
 		case "context":
-			contextUsage = result.Data.(string)
+			if ctxData, ok := result.Data.(*context.ContextData); ok && ctxData != nil {
+				contextBar = ctxData.Bar
+				contextInfo = ctxData.Info
+				contextTokens = ctxData.Tokens
+			}
 		case "message":
 			userMessage = result.Data.(string)
 		case "tools":
@@ -322,11 +328,14 @@ func main() {
 	}
 
 	// Line 1: 主要狀態列（段落優先級截斷）
+	// contextBar（進度條，priority 4）可被捨棄；
+	// contextInfo（百分比+token，priority 2）幾乎不被捨棄，確保數字資訊始終可見。
 	line1Segments := []statusline.Segment{
 		{Content: fmt.Sprintf("%s[%s] 📂 %s", statusline.ColorReset, modelDisplay, projectName), Priority: 1},
 		{Content: sessionNameDisplay, Priority: 10},
 		{Content: gitDisplay, Priority: 3},
-		{Content: contextUsage, Priority: 4},
+		{Content: contextBar, Priority: 4},
+		{Content: contextInfo, Priority: 2},
 		{Content: speedDisplay, Priority: 7},
 		{Content: autocompactDisplay, Priority: 8},
 		{Content: linesDisplay, Priority: 9},
@@ -334,6 +343,21 @@ func main() {
 		{Content: costDisplay, Priority: 6},
 		{Content: configInfoDisplay, Priority: 11},
 		{Content: statusline.ColorReset, Priority: 0},
+	}
+	if os.Getenv("STATUSLINE_DEBUG") == "1" {
+		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d\n",
+			termWidth, cfg.OverflowMode, contextTokens)
+		total := 0
+		for _, seg := range line1Segments {
+			if seg.Content == "" {
+				continue
+			}
+			w := statusline.VisibleWidth(seg.Content)
+			total += w
+			fmt.Fprintf(os.Stderr, "[debug]   priority=%d width=%d content=%q\n",
+				seg.Priority, w, seg.Content)
+		}
+		fmt.Fprintf(os.Stderr, "[debug] total visible width=%d\n", total)
 	}
 	fmt.Println(formatSegments(line1Segments, termWidth, cfg.OverflowMode))
 
