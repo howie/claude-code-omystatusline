@@ -21,7 +21,9 @@ const DefaultMaxTokens = 200000
 
 // ContextData 包含 context 分析的完整結果
 type ContextData struct {
-	Formatted  string // 格式化的進度條字串
+	Formatted  string // 格式化的進度條字串（向後相容）
+	Bar        string // 僅進度條部分（含前導分隔符，如 " | ░░░░░░░░░░"）
+	Info       string // 百分比 + token 數（如 " 74% 148k"）
 	Percentage int    // 百分比數值
 	Tokens     int    // token 數量
 }
@@ -61,19 +63,29 @@ func AnalyzeDetailedFromLines(lines []transcript.Line, maxTokens int) *ContextDa
 	}
 
 	contextLength := calculateUsageFromLines(lines)
-	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
-	if percentage > 100 {
-		percentage = 100
-	}
-
-	return &ContextData{
-		Formatted:  formatContext(contextLength, maxTokens),
-		Percentage: percentage,
-		Tokens:     contextLength,
-	}
+	return buildContextData(contextLength, maxTokens)
 }
 
-func formatContext(contextLength, maxTokens int) string {
+// AnalyzeDetailed 返回詳細的 context 資料（從檔案路徑讀取）
+func AnalyzeDetailed(transcriptPath string, maxTokens int) *ContextData {
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
+	}
+
+	var contextLength int
+	if transcriptPath != "" {
+		contextLength = calculateUsage(transcriptPath)
+	}
+	return buildContextData(contextLength, maxTokens)
+}
+
+// FormatContextParts 將 context 分為進度條和資訊兩部分，讓呼叫端分別設定截斷優先級。
+// bar 為含前導分隔符的進度條（如 " | ░░░░░░░░░░"）；
+// info 為百分比和 token 數（如 " 74% 148k"，帶顏色）。
+func FormatContextParts(contextLength, maxTokens int) (bar string, info string) {
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
+	}
 	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
 	if percentage > 100 {
 		percentage = 100
@@ -82,13 +94,37 @@ func formatContext(contextLength, maxTokens int) string {
 	progressBar := generateProgressBar(percentage)
 	formattedNum := formatNumber(contextLength)
 
+	bar = " | " + progressBar
+
 	if RenderMode == terminal.ModeASCII {
-		return fmt.Sprintf(" | %s %d%% %s", progressBar, percentage, formattedNum)
+		info = fmt.Sprintf(" %d%% %s", percentage, formattedNum)
+	} else {
+		color := getColor(percentage)
+		info = fmt.Sprintf(" %s%d%% %s%s", color, percentage, formattedNum, statusline.ColorReset)
+	}
+	return bar, info
+}
+
+// buildContextData 從 contextLength 和 maxTokens 建立完整的 ContextData。
+func buildContextData(contextLength, maxTokens int) *ContextData {
+	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
+	if percentage > 100 {
+		percentage = 100
 	}
 
-	color := getColor(percentage)
-	return fmt.Sprintf(" | %s %s%d%% %s%s",
-		progressBar, color, percentage, formattedNum, statusline.ColorReset)
+	bar, info := FormatContextParts(contextLength, maxTokens)
+	return &ContextData{
+		Formatted:  bar + info,
+		Bar:        bar,
+		Info:       info,
+		Percentage: percentage,
+		Tokens:     contextLength,
+	}
+}
+
+func formatContext(contextLength, maxTokens int) string {
+	bar, info := FormatContextParts(contextLength, maxTokens)
+	return bar + info
 }
 
 // calculateUsageFromLines 從共享 transcript 行計算 Context 使用量

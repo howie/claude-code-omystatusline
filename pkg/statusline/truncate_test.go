@@ -263,6 +263,42 @@ func TestStripLeadingDivider(t *testing.T) {
 	}
 }
 
+func TestTruncateLineSplitContextKeepsInfo(t *testing.T) {
+	// 模擬長分支名情境：終端寬度不足時，進度條（priority 4）被捨棄，
+	// 但百分比資訊（priority 2）因優先級高而保留。
+	model := "[Sonnet] 📂 backend"                            // visible: 19
+	git := " 🔀 worktree-tts-performance-improvement (wt)*!6" // visible: 49
+	contextBar := " | ░░░░░░░░░░"                            // visible: 14
+	contextInfo := " 74% 148k"                               // visible: 9
+	session := " | 2h10m"                                    // visible: 8
+
+	segs := []Segment{
+		{Content: model, Priority: 1},
+		{Content: git, Priority: 3},
+		{Content: contextBar, Priority: 4},
+		{Content: contextInfo, Priority: 2},
+		{Content: session, Priority: 5},
+	}
+
+	// 寬終端：全部顯示
+	full := TruncateLine(segs, 200)
+	if !strings.Contains(full, "74%") {
+		t.Errorf("full width should contain context info, got %q", full)
+	}
+	if !strings.Contains(full, "░") {
+		t.Errorf("full width should contain progress bar, got %q", full)
+	}
+
+	// 窄終端（~80）：session 和 contextBar 被捨棄，contextInfo 仍保留
+	narrow := TruncateLine(segs, 82)
+	if !strings.Contains(narrow, "74%") {
+		t.Errorf("narrow width should still show percentage, got %q", narrow)
+	}
+	if strings.Contains(narrow, "2h10m") {
+		t.Errorf("narrow width should drop session (lower priority), got %q", narrow)
+	}
+}
+
 func TestTruncateLineWithAnsiColors(t *testing.T) {
 	// Simulate real status line segments with ANSI codes
 	model := "\033[0m[💛 Opus 4.6] 📂 project\033[0m" // visible: ~22 chars

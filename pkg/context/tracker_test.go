@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
+	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
 func TestFormatNumber(t *testing.T) {
@@ -74,6 +75,70 @@ func TestAnalyzeEmptyPath(t *testing.T) {
 	result := Analyze("", 0)
 	if !strings.Contains(result, "0%") {
 		t.Fatalf("Analyze with empty path should show 0%%, got %q", result)
+	}
+}
+
+func TestFormatContextParts(t *testing.T) {
+	tests := []struct {
+		name          string
+		contextLength int
+		maxTokens     int
+		wantBarPrefix string // bar 應以 " | " 開頭
+		wantInfo      string // info 應包含此字串
+	}{
+		{"zero tokens", 0, 200000, " | ", "0%"},
+		{"50 percent", 100000, 200000, " | ", "50%"},
+		{"100 percent", 200000, 200000, " | ", "100%"},
+		{"token count", 148000, 200000, " | ", "148k"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bar, info := FormatContextParts(tt.contextLength, tt.maxTokens)
+			if !strings.HasPrefix(bar, tt.wantBarPrefix) {
+				t.Errorf("bar should start with %q, got %q", tt.wantBarPrefix, bar)
+			}
+			if !strings.Contains(info, tt.wantInfo) {
+				t.Errorf("info should contain %q, got %q", tt.wantInfo, info)
+			}
+			// bar 不應包含百分比，info 不應包含進度條字元
+			if strings.Contains(bar, "%") {
+				t.Errorf("bar should not contain percentage, got %q", bar)
+			}
+		})
+	}
+}
+
+func TestAnalyzeDetailedFromLines(t *testing.T) {
+	lines := []transcript.Line{
+		{Raw: `{"message":{"usage":{"input_tokens":148027}},"isSidechain":false}`, Parsed: map[string]interface{}{
+			"message": map[string]interface{}{
+				"usage": map[string]interface{}{"input_tokens": float64(148027)},
+			},
+			"isSidechain": false,
+		}},
+	}
+
+	data := AnalyzeDetailedFromLines(lines, 200000)
+	if data == nil {
+		t.Fatal("expected non-nil ContextData")
+	}
+	if data.Tokens != 148027 {
+		t.Errorf("expected Tokens=148027, got %d", data.Tokens)
+	}
+	if data.Percentage != 74 {
+		t.Errorf("expected Percentage=74, got %d", data.Percentage)
+	}
+	if data.Bar == "" {
+		t.Error("Bar should not be empty")
+	}
+	if data.Info == "" {
+		t.Error("Info should not be empty")
+	}
+	// Formatted should be Bar + Info
+	if data.Formatted != data.Bar+data.Info {
+		t.Errorf("Formatted should equal Bar+Info, got Formatted=%q, Bar+Info=%q",
+			data.Formatted, data.Bar+data.Info)
 	}
 }
 
