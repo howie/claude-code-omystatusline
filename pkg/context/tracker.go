@@ -83,6 +83,9 @@ func AnalyzeDetailed(transcriptPath string, maxTokens int) *ContextData {
 // bar 為含前導分隔符的進度條（如 " | ░░░░░░░░░░"）；
 // info 為百分比和 token 數（如 " 74% 148k"，帶顏色）。
 func FormatContextParts(contextLength, maxTokens int) (bar string, info string) {
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
+	}
 	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
 	if percentage > 100 {
 		percentage = 100

@@ -48,7 +48,10 @@ func main() {
 	}
 
 	// Phase 2: 讀取 transcript（一次 I/O）
-	lines, _ := transcript.ReadTail(input.TranscriptPath, 200)
+	lines, err := transcript.ReadTail(input.TranscriptPath, 200)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "statusline: failed to read transcript %q: %v\n", input.TranscriptPath, err)
+	}
 
 	// Phase 3: 並行處理所有資料收集
 	results := make(chan statusline.Result, 12)
@@ -248,11 +251,18 @@ func main() {
 		case "hours":
 			totalHours = result.Data.(string)
 		case "context":
-			if ctxData, ok := result.Data.(*context.ContextData); ok && ctxData != nil {
-				contextBar = ctxData.Bar
-				contextInfo = ctxData.Info
-				contextTokens = ctxData.Tokens
+			ctxData, ok := result.Data.(*context.ContextData)
+			if !ok {
+				fmt.Fprintf(os.Stderr, "statusline: unexpected type for context result: %T\n", result.Data)
+				break
 			}
+			if ctxData == nil {
+				fmt.Fprintf(os.Stderr, "statusline: context result is nil, context section will be empty\n")
+				break
+			}
+			contextBar = ctxData.Bar
+			contextInfo = ctxData.Info
+			contextTokens = ctxData.Tokens
 		case "message":
 			userMessage = result.Data.(string)
 		case "tools":
