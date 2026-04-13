@@ -131,6 +131,45 @@ func TestFormatLinesChanged(t *testing.T) {
 	}
 }
 
+func TestFormatCacheDisplay(t *testing.T) {
+	tests := []struct {
+		name      string
+		cacheStr  string
+		hitRate   int
+		wantEmpty bool
+		wantColor string
+	}{
+		{"empty string", "", 0, true, ""},
+		{"high hit rate", "Cache 85%", 85, false, ColorGreen},
+		{"boundary green", "Cache 80%", 80, false, ColorGreen},
+		{"medium hit rate", "Cache 65%", 65, false, ColorYellow},
+		{"boundary yellow", "Cache 50%", 50, false, ColorYellow},
+		{"low hit rate", "Cache 30%", 30, false, ColorRed},
+		{"zero hit rate", "Cache 0%", 0, false, ColorRed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatCacheDisplay(tt.cacheStr, tt.hitRate)
+			if tt.wantEmpty {
+				if result != "" {
+					t.Fatalf("expected empty for %q, got %q", tt.cacheStr, result)
+				}
+				return
+			}
+			if !strings.Contains(result, tt.wantColor) {
+				t.Fatalf("expected color %q for hitRate %d, got %q", tt.wantColor, tt.hitRate, result)
+			}
+			if !strings.Contains(result, tt.cacheStr) {
+				t.Fatalf("expected %q in result, got %q", tt.cacheStr, result)
+			}
+			if !strings.HasSuffix(result, ColorReset) {
+				t.Fatalf("expected ColorReset suffix, got %q", result)
+			}
+		})
+	}
+}
+
 func TestFormatCostColored(t *testing.T) {
 	tests := []struct {
 		name      string

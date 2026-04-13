@@ -10,6 +10,7 @@ import (
 
 	"github.com/howie/claude-code-omystatusline/pkg/agents"
 	"github.com/howie/claude-code-omystatusline/pkg/apilimits"
+	"github.com/howie/claude-code-omystatusline/pkg/cache"
 	"github.com/howie/claude-code-omystatusline/pkg/config"
 	"github.com/howie/claude-code-omystatusline/pkg/context"
 	"github.com/howie/claude-code-omystatusline/pkg/git"
@@ -54,7 +55,7 @@ func main() {
 	}
 
 	// Phase 3: 並行處理所有資料收集
-	results := make(chan statusline.Result, 12)
+	results := make(chan statusline.Result, 14)
 	var wg sync.WaitGroup
 
 	// --- Transcript-based goroutines ---
@@ -152,6 +153,19 @@ func main() {
 		}()
 	}
 
+	if cfg.Sections.CacheHitRate {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if lines == nil {
+				results <- statusline.Result{Type: "cache", Data: (*cache.CacheInfo)(nil)}
+				return
+			}
+			cacheInfo := cache.Calculate(lines)
+			results <- statusline.Result{Type: "cache", Data: cacheInfo}
+		}()
+	}
+
 	if cfg.Sections.SessionName {
 		wg.Add(1)
 		go func() {
@@ -237,6 +251,8 @@ func main() {
 		todoStr       string
 		speedStr      string
 		autocompact   string
+		cacheStr      string
+		cacheRate     int
 		sessionName   string
 		apiLimits     string
 		configInfo    string
@@ -275,6 +291,12 @@ func main() {
 			speedStr = result.Data.(string)
 		case "autocompact":
 			autocompact = result.Data.(string)
+		case "cache":
+			cacheInfo, ok := result.Data.(*cache.CacheInfo)
+			if ok && cacheInfo != nil {
+				cacheStr = cache.Format(cacheInfo)
+				cacheRate = cacheInfo.HitRate
+			}
 		case "session_name":
 			sessionName = result.Data.(string)
 		case "api_limits":
@@ -313,6 +335,9 @@ func main() {
 	// Autocompact 附加在 context 後
 	autocompactDisplay := statusline.FormatAutocompactDisplay(autocompact)
 
+	// Cache hit rate
+	cacheDisplay := statusline.FormatCacheDisplay(cacheStr, cacheRate)
+
 	// Session name
 	sessionNameDisplay := statusline.FormatSessionNameDisplay(sessionName)
 
@@ -348,6 +373,7 @@ func main() {
 		{Content: contextInfo, Priority: 2},
 		{Content: speedDisplay, Priority: 7},
 		{Content: autocompactDisplay, Priority: 8},
+		{Content: cacheDisplay, Priority: 12},
 		{Content: linesDisplay, Priority: 9},
 		{Content: sessionWithDivider, Priority: 5},
 		{Content: costDisplay, Priority: 6},
