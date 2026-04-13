@@ -310,6 +310,24 @@ func FormatLinesChanged(added, removed int) string {
 	return " " + strings.Join(parts, "/")
 }
 
+// FormatCacheDisplay 格式化快取命中率顯示，依命中率著色
+// hitRate >= 80: 綠色, 50-79: 黃色, < 50: 紅色
+func FormatCacheDisplay(cacheStr string, hitRate int) string {
+	if cacheStr == "" {
+		return ""
+	}
+	var color string
+	switch {
+	case hitRate >= 80:
+		color = ColorGreen
+	case hitRate >= 50:
+		color = ColorYellow
+	default:
+		color = ColorRed
+	}
+	return fmt.Sprintf(" %s%s%s", color, cacheStr, ColorReset)
+}
+
 // FormatCostColored 格式化 cost 顯示，依金額著色
 // <$5 預設色，≥$5 黃色，≥$10 紅色
 // sep 為分隔符（例如 " | "）
