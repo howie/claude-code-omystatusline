@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// Phase 3: 並行處理所有資料收集
-	results := make(chan statusline.Result, 13)
+	results := make(chan statusline.Result, 14)
 	var wg sync.WaitGroup
 
 	// --- Transcript-based goroutines ---
