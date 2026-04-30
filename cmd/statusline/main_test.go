@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/howie/claude-code-omystatusline/pkg/context"
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
 )
 
@@ -52,11 +53,13 @@ func TestContextWindowForModel(t *testing.T) {
 		want    int
 	}{
 		{"claude-haiku-4-5", 200_000},
-		{"claude-haiku-4-5-20251001", 200_000},
+		{"claude-haiku-4-5-20251001", 200_000}, // 帶日期後綴
+		{"Claude-Haiku-4-5", 200_000},          // 大寫輸入（驗證 ToLower 生效）
 		{"claude-sonnet-4-6", 1_000_000},
 		{"claude-opus-4-7", 1_000_000},
 		{"claude-opus-4-6", 1_000_000},
-		{"", 200_000}, // 空字串 fallback 到 DefaultMaxTokens
+		{"CLAUDE-SONNET-4-6", 1_000_000}, // 大寫輸入
+		{"", context.DefaultMaxTokens},   // 空字串 fallback
 	}
 	for _, tc := range cases {
 		got := contextWindowForModel(tc.modelID)

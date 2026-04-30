@@ -43,7 +43,13 @@ func main() {
 	// 決定 context window 大小：優先使用環境變數，其次根據模型自動判斷
 	maxTokens := 0
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
-		if v, err := strconv.Atoi(envMax); err == nil && v > 0 {
+		v, err := strconv.Atoi(envMax)
+		switch {
+		case err != nil:
+			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%q is not a valid integer, using model default\n", envMax)
+		case v <= 0:
+			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%d must be > 0, using model default\n", v)
+		default:
 			maxTokens = v
 		}
 	}
