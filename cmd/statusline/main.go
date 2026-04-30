@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/howie/claude-code-omystatusline/pkg/agents"
@@ -39,12 +40,15 @@ func main() {
 	// 取得分隔符設定
 	sep := cfg.GetSeparator()
 
-	// 讀取環境變數 STATUSLINE_MAX_TOKENS
+	// 決定 context window 大小：優先使用環境變數，其次根據模型自動判斷
 	maxTokens := 0
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		if v, err := strconv.Atoi(envMax); err == nil && v > 0 {
 			maxTokens = v
 		}
+	}
+	if maxTokens == 0 {
+		maxTokens = contextWindowForModel(input.Model.ID)
 	}
 
 	// Phase 2: 讀取 transcript（一次 I/O）
@@ -427,6 +431,21 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 	default:
 		fmt.Fprintf(os.Stderr, "statusline: unknown overflow_mode %q, falling back to \"wrap\"\n", overflowMode)
 		return statusline.WrapLine(segments, maxWidth)
+	}
+}
+
+// contextWindowForModel 根據模型 ID 回傳對應的 context window 大小（tokens）。
+// 優先順序：STATUSLINE_MAX_TOKENS 環境變數 > 此函式 > context.DefaultMaxTokens。
+// Haiku 4.5 為 200K；其他已知 Claude 4.x 模型（Sonnet、Opus）為 1M。
+func contextWindowForModel(modelID string) int {
+	id := strings.ToLower(modelID)
+	switch {
+	case strings.Contains(id, "haiku"):
+		return 200_000
+	case id != "":
+		return 1_000_000
+	default:
+		return context.DefaultMaxTokens
 	}
 }
 

@@ -45,3 +45,23 @@ func TestFormatSegments(t *testing.T) {
 		}
 	})
 }
+
+func TestContextWindowForModel(t *testing.T) {
+	cases := []struct {
+		modelID string
+		want    int
+	}{
+		{"claude-haiku-4-5", 200_000},
+		{"claude-haiku-4-5-20251001", 200_000},
+		{"claude-sonnet-4-6", 1_000_000},
+		{"claude-opus-4-7", 1_000_000},
+		{"claude-opus-4-6", 1_000_000},
+		{"", 200_000}, // 空字串 fallback 到 DefaultMaxTokens
+	}
+	for _, tc := range cases {
+		got := contextWindowForModel(tc.modelID)
+		if got != tc.want {
+			t.Errorf("contextWindowForModel(%q) = %d, want %d", tc.modelID, got, tc.want)
+		}
+	}
+}
