@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/howie/claude-code-omystatusline/pkg/context"
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
 )
 
@@ -44,4 +45,29 @@ func TestFormatSegments(t *testing.T) {
 			t.Error("empty overflow_mode should fall back to wrap behavior")
 		}
 	})
+}
+
+func TestContextWindowForModel(t *testing.T) {
+	cases := []struct {
+		name    string
+		modelID string
+		want    int
+	}{
+		{"haiku-base", "claude-haiku-4-5", 200_000},
+		{"haiku-dated-suffix", "claude-haiku-4-5-20251001", 200_000},
+		{"haiku-uppercase", "Claude-Haiku-4-5", 200_000},
+		{"sonnet", "claude-sonnet-4-6", 1_000_000},
+		{"opus-47", "claude-opus-4-7", 1_000_000},
+		{"opus-46", "claude-opus-4-6", 1_000_000},
+		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 1_000_000},
+		{"empty-fallback", "", context.DefaultMaxTokens},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := contextWindowForModel(tc.modelID)
+			if got != tc.want {
+				t.Errorf("contextWindowForModel(%q) = %d, want %d", tc.modelID, got, tc.want)
+			}
+		})
+	}
 }

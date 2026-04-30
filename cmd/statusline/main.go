@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/howie/claude-code-omystatusline/pkg/agents"
@@ -40,10 +41,16 @@ func main() {
 	// 取得分隔符設定
 	sep := cfg.GetSeparator()
 
-	// 讀取環境變數 STATUSLINE_MAX_TOKENS
-	maxTokens := 0
+	// 決定 context window 大小：優先使用環境變數，其次根據模型自動判斷
+	maxTokens := contextWindowForModel(input.Model.ID)
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
-		if v, err := strconv.Atoi(envMax); err == nil && v > 0 {
+		v, err := strconv.Atoi(envMax)
+		switch {
+		case err != nil:
+			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%q is not a valid integer, using model default\n", envMax)
+		case v <= 0:
+			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%d must be > 0, using model default\n", v)
+		default:
 			maxTokens = v
 		}
 	}
@@ -453,6 +460,20 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 	default:
 		fmt.Fprintf(os.Stderr, "statusline: unknown overflow_mode %q, falling back to \"wrap\"\n", overflowMode)
 		return statusline.WrapLine(segments, maxWidth)
+	}
+}
+
+// contextWindowForModel 根據模型 ID 回傳對應的 context window 大小（tokens）。
+// Haiku（任何變體）為 200K；其他非空模型 ID 為 1M；空字串回傳 context.DefaultMaxTokens。
+func contextWindowForModel(modelID string) int {
+	id := strings.ToLower(modelID)
+	switch {
+	case strings.Contains(id, "haiku"):
+		return 200_000
+	case id != "":
+		return 1_000_000
+	default:
+		return context.DefaultMaxTokens
 	}
 }
 

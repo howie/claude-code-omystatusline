@@ -99,8 +99,10 @@ Formatted status line output to stdout
 
 ### Context Module (`pkg/context/`)
 - Analyzes transcript to estimate token count
-- `Analyze(transcriptPath string, maxTokens int)` - maxTokens configurable, defaults to 200k when <= 0
-- Supports extended context (e.g., 1M tokens) via `STATUSLINE_MAX_TOKENS` environment variable
+- `AnalyzeDetailedFromLines(lines, maxTokens)` - returns `ContextData` with bar, info, percentage
+- `maxTokens` auto-detected from `input.Model.ID` in `main.go`; `STATUSLINE_MAX_TOKENS` env var overrides
+- Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`):
+  - Haiku (any variant): 200K | any non-empty non-haiku model ID: 1M | empty model ID: `DefaultMaxTokens`
 - Generates visual progress bar (██████░░░░ format)
 - Color-coded warnings: green (<60%), gold (60-80%), red (≥80%)
 
@@ -148,6 +150,8 @@ go test -v -count=1 ./...
 - Use `golangci-lint` for linting (configured in CI)
 - Comment exported functions and non-obvious logic
 - Write unit tests for new functionality
+- Tests depending on package constants must reference the constant, not its literal value
+  (e.g. `context.DefaultMaxTokens` not `200_000`)
 
 ## Installation File Structure
 
@@ -179,6 +183,13 @@ The project uses symlinks in `~/.claude/commands/` to integrate voice-reminder s
 - `cmd/statusline/main.go` - Entry point and orchestration logic
 - `docs/guides/architecture.md` - Detailed architecture explanation
 - `CHANGELOG.md` - Version history and feature additions
+
+## Debugging
+
+```bash
+# Print segment widths, token count, and termWidth to stderr
+echo '<json>' | STATUSLINE_DEBUG=1 ~/.claude/omystatusline/bin/statusline-go
+```
 
 ## Performance Considerations
 
