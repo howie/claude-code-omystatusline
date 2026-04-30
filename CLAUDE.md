@@ -102,7 +102,7 @@ Formatted status line output to stdout
 - `AnalyzeDetailedFromLines(lines, maxTokens)` - returns `ContextData` with bar, info, percentage
 - `maxTokens` auto-detected from `input.Model.ID` in `main.go`; `STATUSLINE_MAX_TOKENS` env var overrides
 - Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`):
-  - Haiku 4.5: 200K | Sonnet 4.6 / Opus 4.6 / Opus 4.7: 1M | empty model ID: `DefaultMaxTokens`
+  - Haiku (any variant): 200K | any non-empty non-haiku model ID: 1M | empty model ID: `DefaultMaxTokens`
 - Generates visual progress bar (██████░░░░ format)
 - Color-coded warnings: green (<60%), gold (60-80%), red (≥80%)
 
@@ -188,7 +188,7 @@ The project uses symlinks in `~/.claude/commands/` to integrate voice-reminder s
 
 ```bash
 # Print segment widths, token count, and termWidth to stderr
-STATUSLINE_DEBUG=1 echo '<json>' | ~/.claude/omystatusline/bin/statusline-go
+echo '<json>' | STATUSLINE_DEBUG=1 ~/.claude/omystatusline/bin/statusline-go
 ```
 
 ## Performance Considerations

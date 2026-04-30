@@ -49,22 +49,25 @@ func TestFormatSegments(t *testing.T) {
 
 func TestContextWindowForModel(t *testing.T) {
 	cases := []struct {
+		name    string
 		modelID string
 		want    int
 	}{
-		{"claude-haiku-4-5", 200_000},
-		{"claude-haiku-4-5-20251001", 200_000}, // 帶日期後綴
-		{"Claude-Haiku-4-5", 200_000},          // 大寫輸入（驗證 ToLower 生效）
-		{"claude-sonnet-4-6", 1_000_000},
-		{"claude-opus-4-7", 1_000_000},
-		{"claude-opus-4-6", 1_000_000},
-		{"CLAUDE-SONNET-4-6", 1_000_000}, // 大寫輸入
-		{"", context.DefaultMaxTokens},   // 空字串 fallback
+		{"haiku-base", "claude-haiku-4-5", 200_000},
+		{"haiku-dated-suffix", "claude-haiku-4-5-20251001", 200_000},
+		{"haiku-uppercase", "Claude-Haiku-4-5", 200_000},
+		{"sonnet", "claude-sonnet-4-6", 1_000_000},
+		{"opus-47", "claude-opus-4-7", 1_000_000},
+		{"opus-46", "claude-opus-4-6", 1_000_000},
+		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 1_000_000},
+		{"empty-fallback", "", context.DefaultMaxTokens},
 	}
 	for _, tc := range cases {
-		got := contextWindowForModel(tc.modelID)
-		if got != tc.want {
-			t.Errorf("contextWindowForModel(%q) = %d, want %d", tc.modelID, got, tc.want)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			got := contextWindowForModel(tc.modelID)
+			if got != tc.want {
+				t.Errorf("contextWindowForModel(%q) = %d, want %d", tc.modelID, got, tc.want)
+			}
+		})
 	}
 }

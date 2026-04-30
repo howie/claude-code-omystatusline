@@ -41,7 +41,7 @@ func main() {
 	sep := cfg.GetSeparator()
 
 	// 決定 context window 大小：優先使用環境變數，其次根據模型自動判斷
-	maxTokens := 0
+	maxTokens := contextWindowForModel(input.Model.ID)
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
 		switch {
@@ -52,9 +52,6 @@ func main() {
 		default:
 			maxTokens = v
 		}
-	}
-	if maxTokens == 0 {
-		maxTokens = contextWindowForModel(input.Model.ID)
 	}
 
 	// Phase 2: 讀取 transcript（一次 I/O）
@@ -441,8 +438,7 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 }
 
 // contextWindowForModel 根據模型 ID 回傳對應的 context window 大小（tokens）。
-// 優先順序：STATUSLINE_MAX_TOKENS 環境變數 > 此函式 > context.DefaultMaxTokens。
-// Haiku 4.5 為 200K；其他已知 Claude 4.x 模型（Sonnet、Opus）為 1M。
+// Haiku（任何變體）為 200K；其他非空模型 ID 為 1M；空字串回傳 context.DefaultMaxTokens。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
 	switch {
