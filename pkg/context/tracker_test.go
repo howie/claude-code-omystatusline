@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
+	"github.com/howie/claude-code-omystatusline/pkg/terminal"
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
@@ -135,6 +136,12 @@ func TestAnalyzeDetailedFromLines(t *testing.T) {
 	if data.Info == "" {
 		t.Error("Info should not be empty")
 	}
+	if data.NoUsageData {
+		t.Error("expected NoUsageData=false for a transcript with message.usage")
+	}
+	if !data.HasData() {
+		t.Error("expected HasData()=true when tokens > 0 and NoUsageData=false")
+	}
 	// Formatted should be Bar + Info
 	if data.Formatted != data.Bar+data.Info {
 		t.Errorf("Formatted should equal Bar+Info, got Formatted=%q, Bar+Info=%q",
@@ -142,9 +149,14 @@ func TestAnalyzeDetailedFromLines(t *testing.T) {
 	}
 }
 
+// TestAnalyzeDetailedFromLines_MetadataOnly verifies that a transcript containing only
+// administrative metadata events (custom-title, agent-name, pr-link) — as seen in
+// local-agent-mode sessions — sets NoUsageData=true and renders 📡 instead of "0% --".
 func TestAnalyzeDetailedFromLines_MetadataOnly(t *testing.T) {
-	// Simulates a local-agent-mode transcript that only contains metadata events
-	// (custom-title, agent-name, pr-link) with no actual conversation entries.
+	orig := RenderMode
+	RenderMode = terminal.ModeTrueColor
+	defer func() { RenderMode = orig }()
+
 	lines := []transcript.Line{
 		{Parsed: map[string]interface{}{"type": "custom-title", "customTitle": "figma-flutter-rule-setup", "sessionId": "abc"}},
 		{Parsed: map[string]interface{}{"type": "agent-name", "agentName": "figma-flutter-rule-setup", "sessionId": "abc"}},
@@ -164,6 +176,9 @@ func TestAnalyzeDetailedFromLines_MetadataOnly(t *testing.T) {
 	if data.Tokens != 0 {
 		t.Errorf("expected Tokens=0, got %d", data.Tokens)
 	}
+	if data.HasData() {
+		t.Error("expected HasData()=false when NoUsageData=true")
+	}
 	if !strings.Contains(data.Info, "📡") {
 		t.Errorf("expected Info to contain 📡 for NoUsageData, got %q", data.Info)
 	}
@@ -172,6 +187,57 @@ func TestAnalyzeDetailedFromLines_MetadataOnly(t *testing.T) {
 	}
 }
 
+// TestAnalyzeDetailedFromLines_MetadataOnly_ASCII verifies the ASCII fallback renders "[remote]".
+func TestAnalyzeDetailedFromLines_MetadataOnly_ASCII(t *testing.T) {
+	orig := RenderMode
+	RenderMode = terminal.ModeASCII
+	defer func() { RenderMode = orig }()
+
+	lines := []transcript.Line{
+		{Parsed: map[string]interface{}{"type": "custom-title", "customTitle": "foo"}},
+		{Parsed: map[string]interface{}{"type": "pr-link", "prNumber": float64(1)}},
+	}
+
+	data := AnalyzeDetailedFromLines(lines, 1_000_000)
+	if !data.NoUsageData {
+		t.Error("expected NoUsageData=true for metadata-only transcript in ASCII mode")
+	}
+	if data.Info != " [remote]" {
+		t.Errorf("expected Info=[remote] in ASCII mode, got %q", data.Info)
+	}
+}
+
+// TestAnalyzeDetailedFromLines_MixedLines verifies that a transcript starting with metadata
+// events but containing at least one message line does NOT set NoUsageData.
+func TestAnalyzeDetailedFromLines_MixedLines(t *testing.T) {
+	lines := []transcript.Line{
+		{Parsed: map[string]interface{}{"type": "custom-title", "customTitle": "foo"}},
+		{Parsed: map[string]interface{}{
+			"message":     map[string]interface{}{"role": "user", "content": "hello"},
+			"isSidechain": false,
+		}},
+	}
+	data := AnalyzeDetailedFromLines(lines, 200000)
+	if data.NoUsageData {
+		t.Error("metadata lines followed by a message line must not set NoUsageData")
+	}
+}
+
+// TestAnalyzeDetailedFromLines_AllNilParsed verifies that lines with all-nil Parsed fields
+// (malformed JSON) do NOT set NoUsageData — the transcript is unreadable, not metadata-only.
+func TestAnalyzeDetailedFromLines_AllNilParsed(t *testing.T) {
+	lines := []transcript.Line{
+		{Raw: "not json", Parsed: nil},
+		{Raw: "also not json", Parsed: nil},
+	}
+	data := AnalyzeDetailedFromLines(lines, 200000)
+	if data.NoUsageData {
+		t.Error("all-nil Parsed lines must not set NoUsageData")
+	}
+}
+
+// TestAnalyzeDetailedFromLines_NoUsageData_FalseForNewSession verifies that nil/empty lines
+// and a user-message-only transcript (no assistant reply yet) do NOT trigger NoUsageData.
 func TestAnalyzeDetailedFromLines_NoUsageData_FalseForNewSession(t *testing.T) {
 	// nil lines (no transcript yet) should NOT set NoUsageData
 	data := AnalyzeDetailedFromLines(nil, 200000)
@@ -188,7 +254,8 @@ func TestAnalyzeDetailedFromLines_NoUsageData_FalseForNewSession(t *testing.T) {
 		t.Error("expected NoUsageData=false for empty lines")
 	}
 
-	// a user message (no usage yet) should not set NoUsageData — it has a message field
+	// a user message with no usage yet should not set NoUsageData — it has a message field,
+	// so isMetadataOnlyTranscript returns false
 	lines := []transcript.Line{
 		{Parsed: map[string]interface{}{
 			"message":     map[string]interface{}{"role": "user", "content": "hello"},
@@ -198,6 +265,62 @@ func TestAnalyzeDetailedFromLines_NoUsageData_FalseForNewSession(t *testing.T) {
 	data3 := AnalyzeDetailedFromLines(lines, 200000)
 	if data3.NoUsageData {
 		t.Error("expected NoUsageData=false when line has message field but no usage yet")
+	}
+}
+
+// TestAnalyzeDetailed_MetadataOnly verifies that the file-path-based AnalyzeDetailed
+// also detects metadata-only transcripts and sets NoUsageData=true.
+func TestAnalyzeDetailed_MetadataOnly(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "transcript.jsonl")
+	content := `{"type":"custom-title","customTitle":"test"}
+{"type":"agent-name","agentName":"test"}
+`
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write transcript: %v", err)
+	}
+
+	data := AnalyzeDetailed(path, 1_000_000)
+	if data == nil {
+		t.Fatal("expected non-nil ContextData")
+	}
+	if !data.NoUsageData {
+		t.Error("AnalyzeDetailed should set NoUsageData=true for metadata-only file")
+	}
+	if data.HasData() {
+		t.Error("expected HasData()=false for metadata-only file")
+	}
+}
+
+// TestAnalyzeDetailed_UnreadablePath verifies that an unreadable path does NOT set NoUsageData.
+func TestAnalyzeDetailed_UnreadablePath(t *testing.T) {
+	data := AnalyzeDetailed("/nonexistent/path.jsonl", 200000)
+	if data == nil {
+		t.Fatal("expected non-nil ContextData")
+	}
+	if data.NoUsageData {
+		t.Error("AnalyzeDetailed should not set NoUsageData for unreadable file")
+	}
+}
+
+// TestHasData verifies the HasData() method for all three semantic states.
+func TestHasData(t *testing.T) {
+	// Real usage data
+	realData := &ContextData{Tokens: 50000, Percentage: 25, NoUsageData: false}
+	if !realData.HasData() {
+		t.Error("expected HasData()=true when Tokens>0 and NoUsageData=false")
+	}
+
+	// NoUsageData (metadata-only session)
+	noUsageData := &ContextData{Tokens: 0, Percentage: 0, NoUsageData: true}
+	if noUsageData.HasData() {
+		t.Error("expected HasData()=false when NoUsageData=true")
+	}
+
+	// New session (genuinely 0 tokens, but not metadata-only)
+	newSession := &ContextData{Tokens: 0, Percentage: 0, NoUsageData: false}
+	if newSession.HasData() {
+		t.Error("expected HasData()=false when Tokens=0 and NoUsageData=false")
 	}
 }
 

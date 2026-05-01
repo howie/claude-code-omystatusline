@@ -21,12 +21,26 @@ const DefaultMaxTokens = 200000
 
 // ContextData 包含 context 分析的完整結果
 type ContextData struct {
-	Formatted   string // 格式化的進度條字串（向後相容）
-	Bar         string // 僅進度條部分（含前導分隔符，如 " | ░░░░░░░░░░"）
-	Info        string // 百分比 + token 數（如 " 74% 148k"）
-	Percentage  int    // 百分比數值
-	Tokens      int    // token 數量
-	NoUsageData bool   // transcript 有內容但無 message.usage（例如 local-agent-mode session）
+	Formatted string // 格式化的進度條字串（向後相容）
+	Bar       string // 僅進度條部分（含前導分隔符，如 " | ░░░░░░░░░░"）
+	Info      string // 百分比 + token 數（如 " 74% 148k"），NoUsageData 時為 "📡"
+
+	// Percentage 為百分比數值（0–100）。NoUsageData 為 true 時固定為 0，但不代表真正零使用量。
+	Percentage int
+	// Tokens 為最近一次 message.usage 解析到的 token 數。NoUsageData 為 true 時固定為 0，但不代表真正零使用量。
+	// 使用 HasData() 確認數值是否有意義。
+	Tokens int
+	// NoUsageData 為 true 代表 lines 有可解析的項目但無任何 message.usage，
+	// 例如 local-agent-mode 的純 metadata session（只含 custom-title、agent-name、pr-link 等）。
+	// 此時 Tokens 與 Percentage 均為 0，但不代表真正的零使用量。
+	NoUsageData bool
+}
+
+// HasData 回報此 ContextData 是否包含真實的 token 使用量。
+// 全新 session（尚無 assistant reply）與 NoUsageData=true 時均回傳 false。
+// 需要區分「零使用量」與「無法量測」時，再直接檢查 NoUsageData 欄位。
+func (c *ContextData) HasData() bool {
+	return !c.NoUsageData && c.Tokens > 0
 }
 
 // Analyze 分析 Context 使用量（向後相容）
@@ -68,17 +82,24 @@ func AnalyzeDetailedFromLines(lines []transcript.Line, maxTokens int) *ContextDa
 	return buildContextData(contextLength, maxTokens, noUsageData)
 }
 
-// AnalyzeDetailed 返回詳細的 context 資料（從檔案路徑讀取）
+// AnalyzeDetailed 返回詳細的 context 資料（從檔案路徑讀取）。
+// 當 contextLength == 0 時，會嘗試讀少量行來偵測 metadata-only transcript 並設定 NoUsageData。
+// 若檔案不可讀，則 NoUsageData 保持 false（無法判斷）。
 func AnalyzeDetailed(transcriptPath string, maxTokens int) *ContextData {
 	if maxTokens <= 0 {
 		maxTokens = DefaultMaxTokens
 	}
 
 	var contextLength int
+	var noUsageData bool
 	if transcriptPath != "" {
 		contextLength = calculateUsage(transcriptPath)
+		if contextLength == 0 {
+			lines, _ := transcript.ReadTail(transcriptPath, 50)
+			noUsageData = isMetadataOnlyTranscript(lines)
+		}
 	}
-	return buildContextData(contextLength, maxTokens, false)
+	return buildContextData(contextLength, maxTokens, noUsageData)
 }
 
 // FormatContextParts 將 context 分為進度條和資訊兩部分，讓呼叫端分別設定截斷優先級。
@@ -108,8 +129,9 @@ func FormatContextParts(contextLength, maxTokens int) (bar string, info string) 
 }
 
 // buildContextData 從 contextLength 和 maxTokens 建立完整的 ContextData。
-// noUsageData 為 true 時代表 transcript 存在但無 message.usage（例如 local-agent-mode session），
-// 此時以 📡 替代百分比顯示，避免誤導為「真的 0%」。
+// noUsageData 為 true 時代表呼叫端確認 lines 有可解析內容但無任何 message.usage
+// （例如 local-agent-mode 的純 metadata session），此時以 📡 替代百分比顯示，
+// 避免誤導為「真的 0%」。
 func buildContextData(contextLength, maxTokens int, noUsageData bool) *ContextData {
 	if noUsageData {
 		bar := " | " + generateProgressBar(0)
@@ -144,9 +166,11 @@ func buildContextData(contextLength, maxTokens int, noUsageData bool) *ContextDa
 	}
 }
 
-// isMetadataOnlyTranscript 當 lines 含有可解析的項目但沒有任何一行帶 "message" 欄位時回傳 true。
+// isMetadataOnlyTranscript 當 lines 含有至少一個可解析的項目，且沒有任何一行帶 "message" 欄位時回傳 true。
 // 這代表 transcript 只有管理用的 metadata 事件（如 custom-title、agent-name、pr-link），
 // 而非真實對話內容，常見於 local-agent-mode session。
+// Raw 行（JSON 解析失敗，l.Parsed == nil）不計入；如全為解析失敗行，則回傳 false。
+// 帶有 "message": null 的行也視為「有 message 欄位」而不計入 metadata，這是有意設計。
 func isMetadataOnlyTranscript(lines []transcript.Line) bool {
 	hasParsed := false
 	for _, l := range lines {
@@ -221,6 +245,9 @@ func calculateUsage(transcriptPath string) int {
 	allLines := make([]string, 0)
 	for scanner.Scan() {
 		allLines = append(allLines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "statusline: error reading transcript %q: %v\n", transcriptPath, err)
 	}
 
 	start := len(allLines) - 100
