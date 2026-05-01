@@ -41,6 +41,25 @@ func TestReadTail(t *testing.T) {
 	}
 }
 
+func TestReadAll(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "transcript.log")
+	content := `{"a":1}
+{"b":2}
+{"c":3}
+`
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := ReadAll(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 3 {
+		t.Fatalf("ReadAll: expected 3 lines, got %d", len(result))
+	}
+}
+
 func TestReadTailEmptyPath(t *testing.T) {
 	result, err := ReadTail("", 10)
 	if err != nil {

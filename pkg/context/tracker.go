@@ -45,6 +45,7 @@ func (c *ContextData) HasData() bool {
 
 // Analyze 分析 Context 使用量（向後相容）
 // maxTokens <= 0 時使用 DefaultMaxTokens
+// 讀取失敗時輸出錯誤訊息至 stderr 並回傳零值進度條。
 func Analyze(transcriptPath string, maxTokens int) string {
 	if maxTokens <= 0 {
 		maxTokens = DefaultMaxTokens
@@ -83,7 +84,8 @@ func AnalyzeDetailedFromLines(lines []transcript.Line, maxTokens int) *ContextDa
 }
 
 // AnalyzeDetailed 返回詳細的 context 資料（從檔案路徑讀取）。
-// 若檔案不可讀或讀取失敗，NoUsageData 保持 false（無法判斷）。
+// 空路徑或讀取失敗時回傳 NoUsageData=false（無法判斷）；
+// 成功讀取後，若 transcript 為純 metadata，NoUsageData 可能為 true。
 func AnalyzeDetailed(transcriptPath string, maxTokens int) *ContextData {
 	if maxTokens <= 0 {
 		maxTokens = DefaultMaxTokens
@@ -129,8 +131,8 @@ func FormatContextParts(contextLength, maxTokens int) (bar string, info string) 
 
 // buildContextData 從 contextLength 和 maxTokens 建立完整的 ContextData。
 // noUsageData 為 true 時代表呼叫端確認 lines 有可解析內容但無任何 message.usage
-// （例如 local-agent-mode 的純 metadata session），此時以 📡 替代百分比顯示，
-// 避免誤導為「真的 0%」。
+// （例如 local-agent-mode 的純 metadata session），此時以 📡（True Color 模式）或
+// "[remote]"（ASCII 模式）替代百分比顯示，避免誤導為「真的 0%」。
 func buildContextData(contextLength, maxTokens int, noUsageData bool) *ContextData {
 	if noUsageData {
 		bar := " | " + generateProgressBar(0)

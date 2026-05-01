@@ -71,12 +71,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var ctxData *context.ContextData
-			if lines != nil {
-				ctxData = context.AnalyzeDetailedFromLines(lines, maxTokens)
-			} else {
-				ctxData = context.AnalyzeDetailed(input.TranscriptPath, maxTokens)
-			}
+			ctxData := context.AnalyzeDetailedFromLines(lines, maxTokens)
 			results <- statusline.Result{Type: "context", Data: ctxData}
 		}()
 	}
@@ -85,12 +80,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var userMsg string
-			if lines != nil {
-				userMsg = statusline.ExtractUserMessageFromLines(lines, input.SessionID)
-			} else {
-				userMsg = statusline.ExtractUserMessage(input.TranscriptPath, input.SessionID)
-			}
+			userMsg := statusline.ExtractUserMessageFromLines(lines, input.SessionID)
 			results <- statusline.Result{Type: "message", Data: userMsg}
 		}()
 	}
