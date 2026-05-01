@@ -142,6 +142,65 @@ func TestAnalyzeDetailedFromLines(t *testing.T) {
 	}
 }
 
+func TestAnalyzeDetailedFromLines_MetadataOnly(t *testing.T) {
+	// Simulates a local-agent-mode transcript that only contains metadata events
+	// (custom-title, agent-name, pr-link) with no actual conversation entries.
+	lines := []transcript.Line{
+		{Parsed: map[string]interface{}{"type": "custom-title", "customTitle": "figma-flutter-rule-setup", "sessionId": "abc"}},
+		{Parsed: map[string]interface{}{"type": "agent-name", "agentName": "figma-flutter-rule-setup", "sessionId": "abc"}},
+		{Parsed: map[string]interface{}{"type": "pr-link", "sessionId": "abc", "prNumber": float64(213)}},
+	}
+
+	data := AnalyzeDetailedFromLines(lines, 1_000_000)
+	if data == nil {
+		t.Fatal("expected non-nil ContextData")
+	}
+	if !data.NoUsageData {
+		t.Error("expected NoUsageData=true for metadata-only transcript")
+	}
+	if data.Percentage != 0 {
+		t.Errorf("expected Percentage=0, got %d", data.Percentage)
+	}
+	if data.Tokens != 0 {
+		t.Errorf("expected Tokens=0, got %d", data.Tokens)
+	}
+	if !strings.Contains(data.Info, "📡") {
+		t.Errorf("expected Info to contain 📡 for NoUsageData, got %q", data.Info)
+	}
+	if data.Formatted != data.Bar+data.Info {
+		t.Errorf("Formatted should equal Bar+Info")
+	}
+}
+
+func TestAnalyzeDetailedFromLines_NoUsageData_FalseForNewSession(t *testing.T) {
+	// nil lines (no transcript yet) should NOT set NoUsageData
+	data := AnalyzeDetailedFromLines(nil, 200000)
+	if data == nil {
+		t.Fatal("expected non-nil ContextData")
+	}
+	if data.NoUsageData {
+		t.Error("expected NoUsageData=false for nil lines")
+	}
+
+	// empty slice should also not set NoUsageData
+	data2 := AnalyzeDetailedFromLines([]transcript.Line{}, 200000)
+	if data2.NoUsageData {
+		t.Error("expected NoUsageData=false for empty lines")
+	}
+
+	// a user message (no usage yet) should not set NoUsageData — it has a message field
+	lines := []transcript.Line{
+		{Parsed: map[string]interface{}{
+			"message":     map[string]interface{}{"role": "user", "content": "hello"},
+			"isSidechain": false,
+		}},
+	}
+	data3 := AnalyzeDetailedFromLines(lines, 200000)
+	if data3.NoUsageData {
+		t.Error("expected NoUsageData=false when line has message field but no usage yet")
+	}
+}
+
 func TestCalculateUsage(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "transcript.log")

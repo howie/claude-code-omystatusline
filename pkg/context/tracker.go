@@ -21,11 +21,12 @@ const DefaultMaxTokens = 200000
 
 // ContextData 包含 context 分析的完整結果
 type ContextData struct {
-	Formatted  string // 格式化的進度條字串（向後相容）
-	Bar        string // 僅進度條部分（含前導分隔符，如 " | ░░░░░░░░░░"）
-	Info       string // 百分比 + token 數（如 " 74% 148k"）
-	Percentage int    // 百分比數值
-	Tokens     int    // token 數量
+	Formatted   string // 格式化的進度條字串（向後相容）
+	Bar         string // 僅進度條部分（含前導分隔符，如 " | ░░░░░░░░░░"）
+	Info        string // 百分比 + token 數（如 " 74% 148k"）
+	Percentage  int    // 百分比數值
+	Tokens      int    // token 數量
+	NoUsageData bool   // transcript 有內容但無 message.usage（例如 local-agent-mode session）
 }
 
 // Analyze 分析 Context 使用量（向後相容）
@@ -63,7 +64,8 @@ func AnalyzeDetailedFromLines(lines []transcript.Line, maxTokens int) *ContextDa
 	}
 
 	contextLength := calculateUsageFromLines(lines)
-	return buildContextData(contextLength, maxTokens)
+	noUsageData := contextLength == 0 && isMetadataOnlyTranscript(lines)
+	return buildContextData(contextLength, maxTokens, noUsageData)
 }
 
 // AnalyzeDetailed 返回詳細的 context 資料（從檔案路徑讀取）
@@ -76,7 +78,7 @@ func AnalyzeDetailed(transcriptPath string, maxTokens int) *ContextData {
 	if transcriptPath != "" {
 		contextLength = calculateUsage(transcriptPath)
 	}
-	return buildContextData(contextLength, maxTokens)
+	return buildContextData(contextLength, maxTokens, false)
 }
 
 // FormatContextParts 將 context 分為進度條和資訊兩部分，讓呼叫端分別設定截斷優先級。
@@ -106,7 +108,27 @@ func FormatContextParts(contextLength, maxTokens int) (bar string, info string) 
 }
 
 // buildContextData 從 contextLength 和 maxTokens 建立完整的 ContextData。
-func buildContextData(contextLength, maxTokens int) *ContextData {
+// noUsageData 為 true 時代表 transcript 存在但無 message.usage（例如 local-agent-mode session），
+// 此時以 📡 替代百分比顯示，避免誤導為「真的 0%」。
+func buildContextData(contextLength, maxTokens int, noUsageData bool) *ContextData {
+	if noUsageData {
+		bar := " | " + generateProgressBar(0)
+		var info string
+		if RenderMode == terminal.ModeASCII {
+			info = " [remote]"
+		} else {
+			info = fmt.Sprintf(" %s📡%s", statusline.ColorDim, statusline.ColorReset)
+		}
+		return &ContextData{
+			Formatted:   bar + info,
+			Bar:         bar,
+			Info:        info,
+			Percentage:  0,
+			Tokens:      0,
+			NoUsageData: true,
+		}
+	}
+
 	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
 	if percentage > 100 {
 		percentage = 100
@@ -120,6 +142,23 @@ func buildContextData(contextLength, maxTokens int) *ContextData {
 		Percentage: percentage,
 		Tokens:     contextLength,
 	}
+}
+
+// isMetadataOnlyTranscript 當 lines 含有可解析的項目但沒有任何一行帶 "message" 欄位時回傳 true。
+// 這代表 transcript 只有管理用的 metadata 事件（如 custom-title、agent-name、pr-link），
+// 而非真實對話內容，常見於 local-agent-mode session。
+func isMetadataOnlyTranscript(lines []transcript.Line) bool {
+	hasParsed := false
+	for _, l := range lines {
+		if l.Parsed == nil {
+			continue
+		}
+		hasParsed = true
+		if _, hasMsg := l.Parsed["message"]; hasMsg {
+			return false
+		}
+	}
+	return hasParsed
 }
 
 func formatContext(contextLength, maxTokens int) string {

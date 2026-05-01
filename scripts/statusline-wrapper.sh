@@ -7,4 +7,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Execute the Go statusline binary with JSON input and use printf to interpret ANSI codes
-printf "%b" "$(cat | "$SCRIPT_DIR/statusline-go")"
+# Set STATUSLINE_DUMP_STDIN=/tmp/statusline-stdin.json to capture the raw stdin for debugging
+if [ -n "$STATUSLINE_DUMP_STDIN" ]; then
+  printf "%b" "$(tee "$STATUSLINE_DUMP_STDIN" | "$SCRIPT_DIR/statusline-go")"
+else
+  printf "%b" "$(cat | "$SCRIPT_DIR/statusline-go")"
+fi
