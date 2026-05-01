@@ -3,6 +3,7 @@ package transcript
 import (
 	"bufio"
 	"encoding/json"
+	"math"
 	"os"
 )
 
@@ -34,6 +35,9 @@ func ReadTail(path string, n int) ([]Line, error) {
 	for scanner.Scan() {
 		allLines = append(allLines, scanner.Text())
 	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
 
 	start := len(allLines) - n
 	if start < 0 {
@@ -58,7 +62,7 @@ func ReadTail(path string, n int) ([]Line, error) {
 
 // ReadAll 讀取 transcript 全部行並解析（用於需要完整記錄的情境）
 func ReadAll(path string) ([]Line, error) {
-	return ReadTail(path, 0) // n=0 會設 start=0，讀取全部
+	return ReadTail(path, math.MaxInt)
 }
 
 // FilterBySession 過濾出特定 session 的非 sidechain 行

@@ -71,12 +71,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var ctxData *context.ContextData
-			if lines != nil {
-				ctxData = context.AnalyzeDetailedFromLines(lines, maxTokens)
-			} else {
-				ctxData = context.AnalyzeDetailed(input.TranscriptPath, maxTokens)
-			}
+			ctxData := context.AnalyzeDetailedFromLines(lines, maxTokens)
 			results <- statusline.Result{Type: "context", Data: ctxData}
 		}()
 	}
@@ -85,12 +80,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var userMsg string
-			if lines != nil {
-				userMsg = statusline.ExtractUserMessageFromLines(lines, input.SessionID)
-			} else {
-				userMsg = statusline.ExtractUserMessage(input.TranscriptPath, input.SessionID)
-			}
+			userMsg := statusline.ExtractUserMessageFromLines(lines, input.SessionID)
 			results <- statusline.Result{Type: "message", Data: userMsg}
 		}()
 	}
@@ -246,23 +236,24 @@ func main() {
 
 	// Phase 4: 收集結果
 	var (
-		gitBranch     string
-		gitStatusStr  string
-		totalHours    string
-		contextBar    string
-		contextInfo   string
-		contextTokens int
-		userMessage   string
-		toolsStr      string
-		agentsStr     string
-		todoStr       string
-		speedStr      string
-		autocompact   string
-		cacheStr      string
-		cacheRate     int
-		sessionName   string
-		apiLimits     string
-		configInfo    string
+		gitBranch      string
+		gitStatusStr   string
+		totalHours     string
+		contextBar     string
+		contextInfo    string
+		contextTokens  int
+		contextHasData bool
+		userMessage    string
+		toolsStr       string
+		agentsStr      string
+		todoStr        string
+		speedStr       string
+		autocompact    string
+		cacheStr       string
+		cacheRate      int
+		sessionName    string
+		apiLimits      string
+		configInfo     string
 	)
 
 	for result := range results {
@@ -286,6 +277,7 @@ func main() {
 			contextBar = ctxData.Bar
 			contextInfo = ctxData.Info
 			contextTokens = ctxData.Tokens
+			contextHasData = ctxData.HasData()
 		case "message":
 			userMessage = result.Data.(string)
 		case "tools":
@@ -388,8 +380,8 @@ func main() {
 		{Content: statusline.ColorReset, Priority: 0},
 	}
 	if os.Getenv("STATUSLINE_DEBUG") == "1" {
-		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d\n",
-			termWidth, cfg.OverflowMode, contextTokens)
+		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d hasData=%v\n",
+			termWidth, cfg.OverflowMode, contextTokens, contextHasData)
 		total := 0
 		for _, seg := range line1Segments {
 			if seg.Content == "" {
