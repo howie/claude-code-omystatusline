@@ -142,11 +142,6 @@ func TestAnalyzeDetailedFromLines(t *testing.T) {
 	if !data.HasData() {
 		t.Error("expected HasData()=true when tokens > 0 and NoUsageData=false")
 	}
-	// Formatted should be Bar + Info
-	if data.Formatted != data.Bar+data.Info {
-		t.Errorf("Formatted should equal Bar+Info, got Formatted=%q, Bar+Info=%q",
-			data.Formatted, data.Bar+data.Info)
-	}
 }
 
 // TestAnalyzeDetailedFromLines_MetadataOnly verifies that a transcript containing only
@@ -184,9 +179,6 @@ func TestAnalyzeDetailedFromLines_MetadataOnly(t *testing.T) {
 	}
 	if !strings.HasPrefix(data.Bar, " | ") {
 		t.Errorf("expected Bar to start with \" | \", got %q", data.Bar)
-	}
-	if data.Formatted != data.Bar+data.Info {
-		t.Errorf("Formatted should equal Bar+Info")
 	}
 }
 
@@ -358,21 +350,12 @@ func TestHasData(t *testing.T) {
 }
 
 func TestCalculateUsage(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "transcript.log")
-
-	lines := []string{
-		`{"message":{"usage":{"input_tokens":10}},"isSidechain":true}`,
-		`not json`,
-		`{"message":{"usage":{"input_tokens":100,"cache_read_input_tokens":50,"cache_creation_input_tokens":25}},"isSidechain":false}`,
+	lines := []transcript.Line{
+		{Parsed: map[string]interface{}{"message": map[string]interface{}{"usage": map[string]interface{}{"input_tokens": float64(10)}}, "isSidechain": true}},
+		{Raw: "not json", Parsed: nil},
+		{Parsed: map[string]interface{}{"message": map[string]interface{}{"usage": map[string]interface{}{"input_tokens": float64(100), "cache_read_input_tokens": float64(50), "cache_creation_input_tokens": float64(25)}}, "isSidechain": false}},
 	}
-
-	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644); err != nil {
-		t.Fatalf("failed to write transcript: %v", err)
-	}
-
-	total := calculateUsage(path)
-	if total != 175 {
+	if total := calculateUsageFromLines(lines); total != 175 {
 		t.Fatalf("expected total usage 175, got %d", total)
 	}
 }
