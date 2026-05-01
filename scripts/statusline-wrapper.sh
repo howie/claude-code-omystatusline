@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Reads stdin once into a variable so the dump and the binary receive the same data.
 if [ -n "$STATUSLINE_DUMP_STDIN" ]; then
   stdin_data=$(cat)
-  if ! printf '%s\n' "$stdin_data" > "$STATUSLINE_DUMP_STDIN" 2>/dev/null; then
+  if ! printf '%s\n' "$stdin_data" > "$STATUSLINE_DUMP_STDIN"; then
     printf 'statusline-wrapper: WARNING: could not write STATUSLINE_DUMP_STDIN to %s\n' "$STATUSLINE_DUMP_STDIN" >&2
   fi
   printf "%b" "$(printf '%s\n' "$stdin_data" | "$SCRIPT_DIR/statusline-go")"

@@ -23,7 +23,7 @@ const DefaultMaxTokens = 200000
 type ContextData struct {
 	Formatted string // 格式化的進度條字串（向後相容）
 	Bar       string // 僅進度條部分（含前導分隔符，如 " | ░░░░░░░░░░"）
-	Info      string // 百分比 + token 數（如 " 74% 148k"），NoUsageData 時為 "📡"
+	Info      string // 百分比 + token 數（如 " 74% 148k"）；NoUsageData 時為 " [remote]"（ASCII 模式）或帶 ANSI dim 的 " 📡"（True Color 模式）
 
 	// Percentage 為百分比數值（0–100）。NoUsageData 為 true 時固定為 0，但不代表真正零使用量。
 	Percentage int
@@ -37,8 +37,11 @@ type ContextData struct {
 }
 
 // HasData 回報此 ContextData 是否包含真實的 token 使用量。
-// 全新 session（尚無 assistant reply）與 NoUsageData=true 時均回傳 false。
-// 需要區分「零使用量」與「無法量測」時，再直接檢查 NoUsageData 欄位。
+// 回傳 false 的情況有兩種，語意不同：
+//   - NoUsageData=true：transcript 可解析但無任何 message.usage（metadata-only session）
+//   - NoUsageData=false, Tokens=0：transcript 不存在、空白、全為解析失敗行，或 session 尚無 assistant reply
+//
+// 若需要區分兩種「無資料」的原因，直接檢查 NoUsageData 欄位。
 func (c *ContextData) HasData() bool {
 	return !c.NoUsageData && c.Tokens > 0
 }
@@ -83,8 +86,9 @@ func AnalyzeDetailedFromLines(lines []transcript.Line, maxTokens int) *ContextDa
 }
 
 // AnalyzeDetailed 返回詳細的 context 資料（從檔案路徑讀取）。
-// 當 contextLength == 0 時，會嘗試讀少量行來偵測 metadata-only transcript 並設定 NoUsageData。
-// 若檔案不可讀，則 NoUsageData 保持 false（無法判斷）。
+// 當 contextLength == 0 時，額外讀取最後 50 行（calculateUsage 讀最後 100 行）
+// 偵測 metadata-only transcript 並設定 NoUsageData。
+// 若檔案不可讀或讀取失敗，NoUsageData 保持 false（無法判斷）。
 func AnalyzeDetailed(transcriptPath string, maxTokens int) *ContextData {
 	if maxTokens <= 0 {
 		maxTokens = DefaultMaxTokens
@@ -95,8 +99,12 @@ func AnalyzeDetailed(transcriptPath string, maxTokens int) *ContextData {
 	if transcriptPath != "" {
 		contextLength = calculateUsage(transcriptPath)
 		if contextLength == 0 {
-			lines, _ := transcript.ReadTail(transcriptPath, 50)
-			noUsageData = isMetadataOnlyTranscript(lines)
+			lines, err := transcript.ReadTail(transcriptPath, 50)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "statusline: could not probe transcript for metadata-only detection %q: %v\n", transcriptPath, err)
+			} else {
+				noUsageData = isMetadataOnlyTranscript(lines)
+			}
 		}
 	}
 	return buildContextData(contextLength, maxTokens, noUsageData)
@@ -248,6 +256,7 @@ func calculateUsage(transcriptPath string) int {
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "statusline: error reading transcript %q: %v\n", transcriptPath, err)
+		return 0
 	}
 
 	start := len(allLines) - 100

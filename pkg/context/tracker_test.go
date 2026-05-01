@@ -182,8 +182,26 @@ func TestAnalyzeDetailedFromLines_MetadataOnly(t *testing.T) {
 	if !strings.Contains(data.Info, "📡") {
 		t.Errorf("expected Info to contain 📡 for NoUsageData, got %q", data.Info)
 	}
+	if !strings.HasPrefix(data.Bar, " | ") {
+		t.Errorf("expected Bar to start with \" | \", got %q", data.Bar)
+	}
 	if data.Formatted != data.Bar+data.Info {
 		t.Errorf("Formatted should equal Bar+Info")
+	}
+}
+
+// TestIsMetadataOnlyTranscript_NullMessage verifies the documented design decision:
+// a line with "message": null is treated as having a "message" field (not metadata-only).
+// This guards against refactoring the map-key check into a nil-check, which would break
+// the invariant silently.
+func TestIsMetadataOnlyTranscript_NullMessage(t *testing.T) {
+	lines := []transcript.Line{
+		{Parsed: map[string]interface{}{"type": "summary", "message": nil}},
+	}
+	data := AnalyzeDetailedFromLines(lines, 200000)
+	if data.NoUsageData {
+		t.Error("line with message=nil must not be treated as metadata-only: " +
+			"Go map key presence check returns true even when value is nil")
 	}
 }
 
@@ -300,6 +318,21 @@ func TestAnalyzeDetailed_UnreadablePath(t *testing.T) {
 	}
 	if data.NoUsageData {
 		t.Error("AnalyzeDetailed should not set NoUsageData for unreadable file")
+	}
+}
+
+// TestAnalyzeDetailed_EmptyPath verifies that an empty path returns a usable ContextData
+// with NoUsageData=false and HasData()=false (treated as a new session, not metadata-only).
+func TestAnalyzeDetailed_EmptyPath(t *testing.T) {
+	data := AnalyzeDetailed("", 200000)
+	if data == nil {
+		t.Fatal("expected non-nil ContextData")
+	}
+	if data.NoUsageData {
+		t.Error("AnalyzeDetailed with empty path must not set NoUsageData")
+	}
+	if data.HasData() {
+		t.Error("AnalyzeDetailed with empty path must return HasData()=false")
 	}
 }
 

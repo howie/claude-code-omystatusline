@@ -34,6 +34,9 @@ func ReadTail(path string, n int) ([]Line, error) {
 	for scanner.Scan() {
 		allLines = append(allLines, scanner.Text())
 	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
 
 	start := len(allLines) - n
 	if start < 0 {
