@@ -50,7 +50,7 @@ func main() {
 	// 決定 context window 大小：
 	// 1. transcript 最後一筆 usage 的 message.model（最準確，對應實際產生 token 的模型）
 	// 2. fallback 到 input.Model.ID（session 當前設定的模型）
-	// 3. STATUSLINE_MAX_TOKENS 環境變數可覆寫一切
+	// 3. STATUSLINE_MAX_TOKENS 環境變數可覆寫 maxTokens（effectiveModelID 保留供 debug 輸出）
 	effectiveModelID := context.InferModelFromLines(lines)
 	if effectiveModelID == "" {
 		effectiveModelID = input.Model.ID
@@ -78,6 +78,10 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			if lines == nil {
+				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
+				return
+			}
 			ctxData := context.AnalyzeDetailedFromLines(lines, maxTokens)
 			results <- statusline.Result{Type: "context", Data: ctxData}
 		}()
@@ -87,6 +91,10 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			if lines == nil {
+				results <- statusline.Result{Type: "message", Data: ""}
+				return
+			}
 			userMsg := statusline.ExtractUserMessageFromLines(lines, input.SessionID)
 			results <- statusline.Result{Type: "message", Data: userMsg}
 		}()
@@ -462,8 +470,9 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 	}
 }
 
-// contextWindowForModel 根據模型 ID 回傳經驗校準的有效 context window 大小（tokens）。
-// 數值以 Claude Code 實際觸發 auto-compact 的閾值反推，而非模型理論最大值。
+// contextWindowForModel 根據模型 ID 回傳有效 context window 大小（tokens）。
+// Haiku/Sonnet 數值反推自實測 auto-compact 觸發點（非模型理論最大值）；
+// Opus 數值為保守估計（尚無足夠觸發觀測，預留較大空間）。
 // Haiku: 200K | Sonnet: 500K | Opus: 800K | 未知非空: 500K（保守值）| 空字串: DefaultMaxTokens。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)

@@ -178,10 +178,12 @@ func formatContext(contextLength, maxTokens int) string {
 	return bar + info
 }
 
-// InferModelFromLines 回傳 transcript 最後一筆有 usage 的 assistant 訊息所用的模型 ID。
+// InferModelFromLines 回傳 transcript 最後一筆同時具有 usage 與非空 model 欄位的訊息所用的模型 ID。
+// 實際上只有 assistant 訊息帶有 usage，但本函式不主動驗證 role。
 // 用於 mixed-model session（例如 Plan 用 Opus、Edit 用 Sonnet）時，
 // 確保 context window 分母與產生 token 數的模型一致，而非 session 當前設定的模型。
-// 找不到時回傳空字串，呼叫端應 fallback 到 input.Model.ID。
+// lines 為 nil（transcript 讀取失敗）時安全回傳空字串；呼叫端應 fallback 到 input.Model.ID。
+// 若最後一筆 usage 缺少 model 欄位，往前找最近一筆有非空 model 欄位的 usage 行。
 func InferModelFromLines(lines []transcript.Line) string {
 	for i := len(lines) - 1; i >= 0; i-- {
 		l := lines[i]

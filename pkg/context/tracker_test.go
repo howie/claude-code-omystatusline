@@ -399,13 +399,41 @@ func TestInferModelFromLines(t *testing.T) {
 			want: "claude-opus-4-7",
 		},
 		{
+			// 反向迭代先碰到 index 1（isSidechain=true）必須跳過，再找到 index 0（valid）
 			name: "isSidechain line skipped",
 			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 100000), // idx 0 — 跳過 sidechain 後找到此行
 				{Parsed: map[string]interface{}{
 					"message":     map[string]interface{}{"model": "claude-opus-4-7", "usage": map[string]interface{}{"input_tokens": float64(1)}},
 					"isSidechain": true,
+				}}, // idx 1 — 反向迭代最先碰到，必須 skip
+			},
+			want: "claude-sonnet-4-6",
+		},
+		{
+			// 全部 sidechain — 無有效 usage 行，回傳 ""
+			name: "all sidechain returns empty",
+			lines: []transcript.Line{
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "claude-opus-4-7", "usage": map[string]interface{}{"input_tokens": float64(10)}},
+					"isSidechain": true,
 				}},
-				makeUsageLine("claude-sonnet-4-6", 100000),
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "claude-haiku-4-5", "usage": map[string]interface{}{"input_tokens": float64(5)}},
+					"isSidechain": true,
+				}},
+			},
+			want: "",
+		},
+		{
+			// model 欄位為空字串時跳過，往前找有非空 model 的行
+			name: "empty model string skipped, fallback to earlier line",
+			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 50000),
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "", "usage": map[string]interface{}{"input_tokens": float64(10)}},
+					"isSidechain": false,
+				}},
 			},
 			want: "claude-sonnet-4-6",
 		},
