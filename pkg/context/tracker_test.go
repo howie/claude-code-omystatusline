@@ -359,3 +359,101 @@ func TestCalculateUsage(t *testing.T) {
 		t.Fatalf("expected total usage 175, got %d", total)
 	}
 }
+
+func makeUsageLine(modelID string, inputTokens float64) transcript.Line {
+	return transcript.Line{Parsed: map[string]interface{}{
+		"message": map[string]interface{}{
+			"model": modelID,
+			"usage": map[string]interface{}{"input_tokens": inputTokens},
+		},
+		"isSidechain": false,
+	}}
+}
+
+// TestInferModelFromLines 驗證從 transcript 最後一筆有 usage 的行讀出 model ID。
+func TestInferModelFromLines(t *testing.T) {
+	tests := []struct {
+		name  string
+		lines []transcript.Line
+		want  string
+	}{
+		{
+			name:  "single sonnet line",
+			lines: []transcript.Line{makeUsageLine("claude-sonnet-4-6", 100000)},
+			want:  "claude-sonnet-4-6",
+		},
+		{
+			name: "mixed model — returns last (sonnet after opus)",
+			lines: []transcript.Line{
+				makeUsageLine("claude-opus-4-7", 80000),
+				makeUsageLine("claude-sonnet-4-6", 150000),
+			},
+			want: "claude-sonnet-4-6",
+		},
+		{
+			name: "mixed model — returns last (opus after sonnet)",
+			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 50000),
+				makeUsageLine("claude-opus-4-7", 200000),
+			},
+			want: "claude-opus-4-7",
+		},
+		{
+			name: "isSidechain line skipped",
+			lines: []transcript.Line{
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "claude-opus-4-7", "usage": map[string]interface{}{"input_tokens": float64(1)}},
+					"isSidechain": true,
+				}},
+				makeUsageLine("claude-sonnet-4-6", 100000),
+			},
+			want: "claude-sonnet-4-6",
+		},
+		{
+			name: "usage line without model field — skipped, fallback to earlier line",
+			lines: []transcript.Line{
+				makeUsageLine("claude-opus-4-7", 80000),
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"usage": map[string]interface{}{"input_tokens": float64(90000)}},
+					"isSidechain": false,
+				}},
+			},
+			want: "claude-opus-4-7",
+		},
+		{
+			name: "user message line (no usage) skipped",
+			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 100000),
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"role": "user", "content": "hello"},
+					"isSidechain": false,
+				}},
+			},
+			want: "claude-sonnet-4-6",
+		},
+		{
+			name:  "empty lines",
+			lines: []transcript.Line{},
+			want:  "",
+		},
+		{
+			name:  "nil lines",
+			lines: nil,
+			want:  "",
+		},
+		{
+			name:  "all nil Parsed",
+			lines: []transcript.Line{{Raw: "bad json", Parsed: nil}},
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := InferModelFromLines(tt.lines)
+			if got != tt.want {
+				t.Errorf("InferModelFromLines() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

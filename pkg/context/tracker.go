@@ -178,6 +178,33 @@ func formatContext(contextLength, maxTokens int) string {
 	return bar + info
 }
 
+// InferModelFromLines 回傳 transcript 最後一筆有 usage 的 assistant 訊息所用的模型 ID。
+// 用於 mixed-model session（例如 Plan 用 Opus、Edit 用 Sonnet）時，
+// 確保 context window 分母與產生 token 數的模型一致，而非 session 當前設定的模型。
+// 找不到時回傳空字串，呼叫端應 fallback 到 input.Model.ID。
+func InferModelFromLines(lines []transcript.Line) string {
+	for i := len(lines) - 1; i >= 0; i-- {
+		l := lines[i]
+		if l.Parsed == nil {
+			continue
+		}
+		if isSide, ok := l.Parsed["isSidechain"].(bool); ok && isSide {
+			continue
+		}
+		message, ok := l.Parsed["message"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if _, hasUsage := message["usage"].(map[string]interface{}); !hasUsage {
+			continue
+		}
+		if model, ok := message["model"].(string); ok && model != "" {
+			return model
+		}
+	}
+	return ""
+}
+
 // calculateUsageFromLines 從共享 transcript 行計算 Context 使用量
 func calculateUsageFromLines(lines []transcript.Line) int {
 	for i := len(lines) - 1; i >= 0; i-- {
