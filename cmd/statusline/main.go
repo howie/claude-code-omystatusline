@@ -78,7 +78,10 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if lines == nil {
+			// Only suppress context on actual read error (err != nil).
+			// Empty transcript path (new session) returns (nil, nil) and should
+			// still produce the zero-usage display via AnalyzeDetailedFromLines(nil).
+			if lines == nil && err != nil {
 				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
 				return
 			}
@@ -91,7 +94,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if lines == nil {
+			if lines == nil && err != nil {
 				results <- statusline.Result{Type: "message", Data: ""}
 				return
 			}
