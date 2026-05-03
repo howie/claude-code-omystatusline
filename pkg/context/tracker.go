@@ -178,12 +178,11 @@ func formatContext(contextLength, maxTokens int) string {
 	return bar + info
 }
 
-// InferModelFromLines 回傳 transcript 中最後一筆同時具有 usage 與非空 model 欄位之訊息的模型 ID。
-// 反向迭代會跳過 sidechain 行、缺 usage 行、以及 model 欄位空字串或缺失的行。
-// 用於 mixed-model session（例如 Plan 用 Opus、Edit 用 Sonnet）時，
-// 確保 context window 分母與產生 token 數的模型一致，而非 session 當前設定的模型。
-// lines 為 nil（transcript 讀取失敗）時安全回傳空字串；呼叫端應 fallback 到 input.Model.ID。
-func InferModelFromLines(lines []transcript.Line) string {
+// usageFromLines 從 transcript 中找出最後一筆有效使用量的行，同時回傳 token 數與模型 ID。
+// 「有效」定義：input+cache token 總和 > 0，確保 model 與 token 數永遠來自同一行，
+// 避免 output-only 行（total=0）影響 model 判斷而 token 數卻取自更早的行。
+// sidechain 行與 nil Parsed 行一律跳過。lines 為 nil 時回傳 (0, "")。
+func usageFromLines(lines []transcript.Line) (tokens int, modelID string) {
 	for i := len(lines) - 1; i >= 0; i-- {
 		l := lines[i]
 		if l.Parsed == nil {
@@ -196,50 +195,43 @@ func InferModelFromLines(lines []transcript.Line) string {
 		if !ok {
 			continue
 		}
-		if _, hasUsage := message["usage"].(map[string]interface{}); !hasUsage {
+		usage, ok := message["usage"].(map[string]interface{})
+		if !ok {
 			continue
 		}
-		if model, ok := message["model"].(string); ok && model != "" {
-			return model
+		var total float64
+		if v, ok := usage["input_tokens"].(float64); ok {
+			total += v
 		}
+		if v, ok := usage["cache_read_input_tokens"].(float64); ok {
+			total += v
+		}
+		if v, ok := usage["cache_creation_input_tokens"].(float64); ok {
+			total += v
+		}
+		if total <= 0 {
+			continue
+		}
+		mid, _ := message["model"].(string)
+		return int(total), mid
 	}
-	return ""
+	return 0, ""
+}
+
+// InferModelFromLines 回傳 transcript 中最後一筆有效 usage 行的模型 ID。
+// 「有效」與 calculateUsageFromLines 一致：input+cache token 總和 > 0。
+// 用於 mixed-model session（例如 Plan 用 Opus、Edit 用 Sonnet）時，
+// 確保 context window 分母與產生 token 數的模型來自同一行。
+// 找不到時回傳空字串；呼叫端應 fallback 到 input.Model.ID。
+func InferModelFromLines(lines []transcript.Line) string {
+	_, mid := usageFromLines(lines)
+	return mid
 }
 
 // calculateUsageFromLines 從共享 transcript 行計算 Context 使用量
 func calculateUsageFromLines(lines []transcript.Line) int {
-	for i := len(lines) - 1; i >= 0; i-- {
-		l := lines[i]
-		if l.Parsed == nil {
-			continue
-		}
-
-		if isSide, ok := l.Parsed["isSidechain"].(bool); ok && isSide {
-			continue
-		}
-
-		if message, ok := l.Parsed["message"].(map[string]interface{}); ok {
-			if usage, ok := message["usage"].(map[string]interface{}); ok {
-				var total float64
-
-				if input, ok := usage["input_tokens"].(float64); ok {
-					total += input
-				}
-				if cacheRead, ok := usage["cache_read_input_tokens"].(float64); ok {
-					total += cacheRead
-				}
-				if cacheCreation, ok := usage["cache_creation_input_tokens"].(float64); ok {
-					total += cacheCreation
-				}
-
-				if total > 0 {
-					return int(total)
-				}
-			}
-		}
-	}
-
-	return 0
+	tokens, _ := usageFromLines(lines)
+	return tokens
 }
 
 // gradientColors 定義 10 格漸層色（綠→黃→橙→紅）

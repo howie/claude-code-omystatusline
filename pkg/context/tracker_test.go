@@ -426,8 +426,10 @@ func TestInferModelFromLines(t *testing.T) {
 			want: "",
 		},
 		{
-			// model 欄位為空字串時跳過，往前找有非空 model 的行
-			name: "empty model string skipped, fallback to earlier line",
+			// 最後一筆有效 usage 行 model="" → 回傳 ""，呼叫端 fallback 到 input.Model.ID。
+			// 這確保 token 數（來自 idx 1）與 model（"" → input.Model.ID）使用同一行來源，
+			// 比舊行為（token from idx 1, model from idx 0）更一致。
+			name: "empty model string — returns empty, caller falls back to input.Model.ID",
 			lines: []transcript.Line{
 				makeUsageLine("claude-sonnet-4-6", 50000),
 				{Parsed: map[string]interface{}{
@@ -435,10 +437,11 @@ func TestInferModelFromLines(t *testing.T) {
 					"isSidechain": false,
 				}},
 			},
-			want: "claude-sonnet-4-6",
+			want: "",
 		},
 		{
-			name: "usage line without model field — skipped, fallback to earlier line",
+			// 最後一筆有效 usage 行無 model 欄位 → 回傳 ""，呼叫端 fallback 到 input.Model.ID。
+			name: "usage line without model field — returns empty, caller falls back",
 			lines: []transcript.Line{
 				makeUsageLine("claude-opus-4-7", 80000),
 				{Parsed: map[string]interface{}{
@@ -446,7 +449,7 @@ func TestInferModelFromLines(t *testing.T) {
 					"isSidechain": false,
 				}},
 			},
-			want: "claude-opus-4-7",
+			want: "",
 		},
 		{
 			name: "user message line (no usage) skipped",

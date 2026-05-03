@@ -487,6 +487,7 @@ func contextWindowForModel(modelID string) int {
 	case strings.Contains(id, "opus"):
 		return 800_000
 	case id != "":
+		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 500K context window default\n", modelID)
 		return 500_000
 	default:
 		return context.DefaultMaxTokens
