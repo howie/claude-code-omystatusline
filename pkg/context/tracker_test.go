@@ -359,3 +359,132 @@ func TestCalculateUsage(t *testing.T) {
 		t.Fatalf("expected total usage 175, got %d", total)
 	}
 }
+
+func makeUsageLine(modelID string, inputTokens float64) transcript.Line {
+	return transcript.Line{Parsed: map[string]interface{}{
+		"message": map[string]interface{}{
+			"model": modelID,
+			"usage": map[string]interface{}{"input_tokens": inputTokens},
+		},
+		"isSidechain": false,
+	}}
+}
+
+// TestInferModelFromLines 驗證從 transcript 最後一筆有 usage 的行讀出 model ID。
+func TestInferModelFromLines(t *testing.T) {
+	tests := []struct {
+		name  string
+		lines []transcript.Line
+		want  string
+	}{
+		{
+			name:  "single sonnet line",
+			lines: []transcript.Line{makeUsageLine("claude-sonnet-4-6", 100000)},
+			want:  "claude-sonnet-4-6",
+		},
+		{
+			name: "mixed model — returns last (sonnet after opus)",
+			lines: []transcript.Line{
+				makeUsageLine("claude-opus-4-7", 80000),
+				makeUsageLine("claude-sonnet-4-6", 150000),
+			},
+			want: "claude-sonnet-4-6",
+		},
+		{
+			name: "mixed model — returns last (opus after sonnet)",
+			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 50000),
+				makeUsageLine("claude-opus-4-7", 200000),
+			},
+			want: "claude-opus-4-7",
+		},
+		{
+			// 反向迭代先碰到 index 1（isSidechain=true）必須跳過，再找到 index 0（valid）
+			name: "isSidechain line skipped",
+			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 100000), // idx 0 — 跳過 sidechain 後找到此行
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "claude-opus-4-7", "usage": map[string]interface{}{"input_tokens": float64(1)}},
+					"isSidechain": true,
+				}}, // idx 1 — 反向迭代最先碰到，必須 skip
+			},
+			want: "claude-sonnet-4-6",
+		},
+		{
+			// 全部 sidechain — 無有效 usage 行，回傳 ""
+			name: "all sidechain returns empty",
+			lines: []transcript.Line{
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "claude-opus-4-7", "usage": map[string]interface{}{"input_tokens": float64(10)}},
+					"isSidechain": true,
+				}},
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "claude-haiku-4-5", "usage": map[string]interface{}{"input_tokens": float64(5)}},
+					"isSidechain": true,
+				}},
+			},
+			want: "",
+		},
+		{
+			// 最後一筆有效 usage 行 model="" → 回傳 ""，呼叫端 fallback 到 input.Model.ID。
+			// 這確保 token 數（來自 idx 1）與 model（"" → input.Model.ID）使用同一行來源，
+			// 比舊行為（token from idx 1, model from idx 0）更一致。
+			name: "empty model string — returns empty, caller falls back to input.Model.ID",
+			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 50000),
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"model": "", "usage": map[string]interface{}{"input_tokens": float64(10)}},
+					"isSidechain": false,
+				}},
+			},
+			want: "",
+		},
+		{
+			// 最後一筆有效 usage 行無 model 欄位 → 回傳 ""，呼叫端 fallback 到 input.Model.ID。
+			name: "usage line without model field — returns empty, caller falls back",
+			lines: []transcript.Line{
+				makeUsageLine("claude-opus-4-7", 80000),
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"usage": map[string]interface{}{"input_tokens": float64(90000)}},
+					"isSidechain": false,
+				}},
+			},
+			want: "",
+		},
+		{
+			name: "user message line (no usage) skipped",
+			lines: []transcript.Line{
+				makeUsageLine("claude-sonnet-4-6", 100000),
+				{Parsed: map[string]interface{}{
+					"message":     map[string]interface{}{"role": "user", "content": "hello"},
+					"isSidechain": false,
+				}},
+			},
+			want: "claude-sonnet-4-6",
+		},
+		{
+			name:  "empty lines",
+			lines: []transcript.Line{},
+			want:  "",
+		},
+		{
+			name:  "nil lines",
+			lines: nil,
+			want:  "",
+		},
+		{
+			name:  "all nil Parsed",
+			lines: []transcript.Line{{Raw: "bad json", Parsed: nil}},
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := InferModelFromLines(tt.lines)
+			if got != tt.want {
+				t.Errorf("InferModelFromLines() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

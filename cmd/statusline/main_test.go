@@ -53,13 +53,20 @@ func TestContextWindowForModel(t *testing.T) {
 		modelID string
 		want    int
 	}{
+		// Haiku: 200K（不變）
 		{"haiku-base", "claude-haiku-4-5", 200_000},
 		{"haiku-dated-suffix", "claude-haiku-4-5-20251001", 200_000},
 		{"haiku-uppercase", "Claude-Haiku-4-5", 200_000},
-		{"sonnet", "claude-sonnet-4-6", 1_000_000},
-		{"opus-47", "claude-opus-4-7", 1_000_000},
-		{"opus-46", "claude-opus-4-6", 1_000_000},
-		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 1_000_000},
+		// Sonnet: 500K（經驗校準，反推自 ~357K compact 點 ÷ 70%）
+		{"sonnet-46", "claude-sonnet-4-6", 500_000},
+		{"sonnet-45", "claude-sonnet-4-5", 500_000},
+		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 500_000},
+		// Opus: 800K（Opus context 較大，預留更多空間）
+		{"opus-47", "claude-opus-4-7", 800_000},
+		{"opus-46", "claude-opus-4-6", 800_000},
+		// 未知非空模型：保守 fallback 500K
+		{"unknown-future", "claude-future-1", 500_000},
+		// 空字串：DefaultMaxTokens
 		{"empty-fallback", "", context.DefaultMaxTokens},
 	}
 	for _, tc := range cases {

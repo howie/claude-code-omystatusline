@@ -41,8 +41,21 @@ func main() {
 	// 取得分隔符設定
 	sep := cfg.GetSeparator()
 
-	// 決定 context window 大小：優先使用環境變數，其次根據模型自動判斷
-	maxTokens := contextWindowForModel(input.Model.ID)
+	// Phase 2: 讀取 transcript（一次 I/O）
+	lines, err := transcript.ReadTail(input.TranscriptPath, 200)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "statusline: failed to read transcript %q: %v\n", input.TranscriptPath, err)
+	}
+
+	// 決定 context window 大小：
+	// 1. transcript 最後一筆 usage 的 message.model（最準確，對應實際產生 token 的模型）
+	// 2. fallback 到 input.Model.ID（session 當前設定的模型）
+	// 3. STATUSLINE_MAX_TOKENS 環境變數可覆寫 maxTokens（effectiveModelID 保留供 debug 輸出）
+	effectiveModelID := context.InferModelFromLines(lines)
+	if effectiveModelID == "" {
+		effectiveModelID = input.Model.ID
+	}
+	maxTokens := contextWindowForModel(effectiveModelID)
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
 		switch {
@@ -55,12 +68,6 @@ func main() {
 		}
 	}
 
-	// Phase 2: 讀取 transcript（一次 I/O）
-	lines, err := transcript.ReadTail(input.TranscriptPath, 200)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "statusline: failed to read transcript %q: %v\n", input.TranscriptPath, err)
-	}
-
 	// Phase 3: 並行處理所有資料收集
 	results := make(chan statusline.Result, 14)
 	var wg sync.WaitGroup
@@ -71,6 +78,13 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// Only suppress context on actual read error (err != nil).
+			// Empty transcript path (new session) returns (nil, nil) and should
+			// still produce the zero-usage display via AnalyzeDetailedFromLines(nil).
+			if lines == nil && err != nil {
+				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
+				return
+			}
 			ctxData := context.AnalyzeDetailedFromLines(lines, maxTokens)
 			results <- statusline.Result{Type: "context", Data: ctxData}
 		}()
@@ -80,6 +94,10 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			if lines == nil && err != nil {
+				results <- statusline.Result{Type: "message", Data: ""}
+				return
+			}
 			userMsg := statusline.ExtractUserMessageFromLines(lines, input.SessionID)
 			results <- statusline.Result{Type: "message", Data: userMsg}
 		}()
@@ -380,8 +398,8 @@ func main() {
 		{Content: statusline.ColorReset, Priority: 0},
 	}
 	if os.Getenv("STATUSLINE_DEBUG") == "1" {
-		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d hasData=%v\n",
-			termWidth, cfg.OverflowMode, contextTokens, contextHasData)
+		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d hasData=%v effectiveModel=%q maxTokens=%d\n",
+			termWidth, cfg.OverflowMode, contextTokens, contextHasData, effectiveModelID, maxTokens)
 		total := 0
 		for _, seg := range line1Segments {
 			if seg.Content == "" {
@@ -455,15 +473,22 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 	}
 }
 
-// contextWindowForModel 根據模型 ID 回傳對應的 context window 大小（tokens）。
-// Haiku（任何變體）為 200K；其他非空模型 ID 為 1M；空字串回傳 context.DefaultMaxTokens。
+// contextWindowForModel 根據模型 ID 回傳有效 context window 大小（tokens）。
+// Haiku/Sonnet 數值反推自實測 auto-compact 觸發點（非模型理論最大值）；
+// Opus 數值為保守估計（尚無足夠觸發觀測，預留較大空間）。
+// Haiku: 200K | Sonnet: 500K | Opus: 800K | 未知非空: 500K（保守值）| 空字串: DefaultMaxTokens。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
 	switch {
 	case strings.Contains(id, "haiku"):
 		return 200_000
+	case strings.Contains(id, "sonnet"):
+		return 500_000
+	case strings.Contains(id, "opus"):
+		return 800_000
 	case id != "":
-		return 1_000_000
+		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 500K context window default\n", modelID)
+		return 500_000
 	default:
 		return context.DefaultMaxTokens
 	}

@@ -100,9 +100,10 @@ Formatted status line output to stdout
 ### Context Module (`pkg/context/`)
 - Analyzes transcript to estimate token count
 - `AnalyzeDetailedFromLines(lines, maxTokens)` - returns `ContextData` with bar, info, percentage
-- `maxTokens` auto-detected from `input.Model.ID` in `main.go`; `STATUSLINE_MAX_TOKENS` env var overrides
-- Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`):
-  - Haiku (any variant): 200K | any non-empty non-haiku model ID: 1M | empty model ID: `DefaultMaxTokens`
+- `InferModelFromLines(lines)` - reads `message.model` from last usage entry; used for mixed-model sessions
+- `maxTokens` source of truth priority: transcript `message.model` → `input.Model.ID` → `STATUSLINE_MAX_TOKENS` env var
+- Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`; **empirically calibrated**, not theoretical max):
+  - Haiku: 200K | Sonnet: 500K | Opus: 800K | unknown non-empty: 500K | empty: `DefaultMaxTokens`
 - Generates visual progress bar (██████░░░░ format)
 - Color-coded warnings: green (<60%), gold (60-80%), red (≥80%)
 
