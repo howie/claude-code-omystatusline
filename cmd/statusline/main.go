@@ -115,7 +115,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if lines == nil && err != nil {
+			if lines == nil {
 				results <- statusline.Result{Type: "message", Data: ""}
 				return
 			}
