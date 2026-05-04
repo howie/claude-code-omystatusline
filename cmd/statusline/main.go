@@ -25,6 +25,11 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
+const (
+	maxTokensSourceContextWindow  = "ContextWindow"
+	maxTokensSourceModelInference = "model-inference"
+)
+
 func main() {
 	var input statusline.Input
 	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
@@ -47,15 +52,27 @@ func main() {
 		fmt.Fprintf(os.Stderr, "statusline: failed to read transcript %q: %v\n", input.TranscriptPath, err)
 	}
 
-	// 決定 context window 大小：
-	// 1. transcript 最後一筆 usage 的 message.model（最準確，對應實際產生 token 的模型）
-	// 2. fallback 到 input.Model.ID（session 當前設定的模型）
-	// 3. STATUSLINE_MAX_TOKENS 環境變數可覆寫 maxTokens（effectiveModelID 保留供 debug 輸出）
-	effectiveModelID := context.InferModelFromLines(lines)
-	if effectiveModelID == "" {
+	// 決定 context window 大小與 maxTokens（優先級由高到低）：
+	// 1. input.ContextWindow.ContextWindowSize（Claude Code 直接提供，最準確，worktree 也有效）
+	// 2. transcript 最後一筆 usage 的 message.model → contextWindowForModel()
+	// 3. fallback 到 input.Model.ID → contextWindowForModel()
+	// 4. STATUSLINE_MAX_TOKENS 環境變數可覆寫（effectiveModelID 保留供 debug 輸出）
+	hasContextWindow := input.ContextWindow.ContextWindowSize > 0
+	var effectiveModelID string
+	var maxTokens int
+	var maxTokensSource string
+	if hasContextWindow {
+		maxTokens = input.ContextWindow.ContextWindowSize
+		maxTokensSource = maxTokensSourceContextWindow
 		effectiveModelID = input.Model.ID
+	} else {
+		effectiveModelID = context.InferModelFromLines(lines)
+		if effectiveModelID == "" {
+			effectiveModelID = input.Model.ID
+		}
+		maxTokens = contextWindowForModel(effectiveModelID)
+		maxTokensSource = maxTokensSourceModelInference
 	}
-	maxTokens := contextWindowForModel(effectiveModelID)
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
 		switch {
@@ -78,9 +95,23 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// Only suppress context on actual read error (err != nil).
-			// Empty transcript path (new session) returns (nil, nil) and should
-			// still produce the zero-usage display via AnalyzeDetailedFromLines(nil).
+			// 優先使用 input.ContextWindow（Claude Code 直接提供，worktree session 也有效）。
+			// Worktree session 的 transcript_path 指向只含 metadata 的小檔案，
+			// 導致 transcript 解析誤判為 NoUsageData（📡）。ContextWindow 則不受此影響。
+			// tokens==0 時顯示 0%（而非 📡）：代表 session 尚未完成第一次 API call，
+			// 不是「無法取得資料」，與 metadata-only transcript 情境語意不同。
+			if hasContextWindow {
+				u := input.ContextWindow.CurrentUsage
+				// output tokens 不計入：context window 壓力由 input+cache 決定，
+				// 與 usageFromLines 的計算方式一致（見 tracker.go）。
+				tokens := u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
+				results <- statusline.Result{Type: "context", Data: context.BuildFromTokens(tokens, maxTokens)}
+				return
+			}
+			// Fallback：較舊的 Claude Code 版本沒有 context_window 欄位，從 transcript 解析。
+			// lines == nil && err != nil → 實際讀取失敗，不顯示 context 段落。
+			// lines == nil && err == nil → 空 transcript_path（新 session 尚無資料），
+			// 仍傳入 nil 給 AnalyzeDetailedFromLines，顯示 📡 而非完全隱藏段落。
 			if lines == nil && err != nil {
 				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
 				return
@@ -94,7 +125,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if lines == nil && err != nil {
+			if lines == nil {
 				results <- statusline.Result{Type: "message", Data: ""}
 				return
 			}
@@ -398,8 +429,8 @@ func main() {
 		{Content: statusline.ColorReset, Priority: 0},
 	}
 	if os.Getenv("STATUSLINE_DEBUG") == "1" {
-		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d hasData=%v effectiveModel=%q maxTokens=%d\n",
-			termWidth, cfg.OverflowMode, contextTokens, contextHasData, effectiveModelID, maxTokens)
+		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d hasData=%v effectiveModel=%q maxTokens=%d maxTokensSource=%q\n",
+			termWidth, cfg.OverflowMode, contextTokens, contextHasData, effectiveModelID, maxTokens, maxTokensSource)
 		total := 0
 		for _, seg := range line1Segments {
 			if seg.Content == "" {

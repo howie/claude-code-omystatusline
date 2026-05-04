@@ -43,6 +43,16 @@ func (c *ContextData) HasData() bool {
 	return !c.NoUsageData && c.Tokens > 0
 }
 
+// BuildFromTokens 從直接提供的 token 數建立 ContextData，供 input.ContextWindow 使用。
+// 當 tokens == 0 時回傳零使用量（不標記 NoUsageData，因為這是有意義的 0%，
+// 而非「無法取得資料」）。
+func BuildFromTokens(tokens, maxTokens int) *ContextData {
+	if maxTokens <= 0 {
+		maxTokens = DefaultMaxTokens
+	}
+	return buildContextData(tokens, maxTokens, false)
+}
+
 // Analyze 分析 Context 使用量（向後相容）
 // maxTokens <= 0 時使用 DefaultMaxTokens
 // 讀取失敗時輸出錯誤訊息至 stderr 並回傳零值進度條。
@@ -111,6 +121,9 @@ func FormatContextParts(contextLength, maxTokens int) (bar string, info string) 
 		maxTokens = DefaultMaxTokens
 	}
 	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
+	if percentage < 0 {
+		percentage = 0
+	}
 	if percentage > 100 {
 		percentage = 100
 	}
@@ -146,6 +159,9 @@ func buildContextData(contextLength, maxTokens int, noUsageData bool) *ContextDa
 	}
 
 	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
+	if percentage < 0 {
+		percentage = 0
+	}
 	if percentage > 100 {
 		percentage = 100
 	}

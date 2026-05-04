@@ -488,3 +488,65 @@ func TestInferModelFromLines(t *testing.T) {
 		})
 	}
 }
+
+// TestBuildFromTokens 驗證 BuildFromTokens 行為，模擬 input.ContextWindow 使用場景（含 worktree）。
+func TestBuildFromTokens(t *testing.T) {
+	orig := RenderMode
+	RenderMode = terminal.ModeTrueColor
+	defer func() { RenderMode = orig }()
+
+	t.Run("worktree session with real usage", func(t *testing.T) {
+		// 模擬：transcript_path 指向 metadata-only worktree 檔案，但 input.ContextWindow 有正確資料
+		tokens := 1 + 694 + 92850 // input + cache_creation + cache_read（93545）
+		data := BuildFromTokens(tokens, 500_000)
+		if data == nil {
+			t.Fatal("expected non-nil ContextData")
+		}
+		if data.NoUsageData {
+			t.Error("BuildFromTokens must never set NoUsageData: usage came directly from Claude Code")
+		}
+		if data.Tokens != tokens {
+			t.Errorf("Tokens = %d, want %d", data.Tokens, tokens)
+		}
+		wantPct := int(float64(tokens) * 100.0 / 500_000)
+		if data.Percentage != wantPct {
+			t.Errorf("Percentage = %d, want %d", data.Percentage, wantPct)
+		}
+		if data.HasData() != (tokens > 0) {
+			t.Errorf("HasData() = %v, want %v", data.HasData(), tokens > 0)
+		}
+		if !strings.Contains(data.Info, "93k") {
+			t.Errorf("Info should contain token count '93k', got %q", data.Info)
+		}
+	})
+
+	t.Run("zero tokens at session start", func(t *testing.T) {
+		// 新 session 尚未有 API call：顯示 0%（不是 📡）
+		data := BuildFromTokens(0, 200_000)
+		if data == nil {
+			t.Fatal("expected non-nil ContextData")
+		}
+		if data.NoUsageData {
+			t.Error("BuildFromTokens with tokens=0 must NOT set NoUsageData: it is a valid 0%, not metadata-only")
+		}
+		if data.Percentage != 0 {
+			t.Errorf("Percentage = %d, want 0", data.Percentage)
+		}
+		if data.HasData() {
+			t.Error("HasData() must be false when tokens=0")
+		}
+		if strings.Contains(data.Info, "📡") {
+			t.Errorf("Info must not contain 📡 for zero-token session from ContextWindow, got %q", data.Info)
+		}
+	})
+
+	t.Run("zero maxTokens uses DefaultMaxTokens", func(t *testing.T) {
+		data := BuildFromTokens(DefaultMaxTokens/2, 0)
+		if data == nil {
+			t.Fatal("expected non-nil ContextData")
+		}
+		if data.Percentage != 50 {
+			t.Errorf("Percentage = %d, want 50 (DefaultMaxTokens/2 out of DefaultMaxTokens)", data.Percentage)
+		}
+	})
+}

@@ -25,6 +25,30 @@ type Input struct {
 		TotalLinesAdded    int     `json:"total_lines_added,omitempty"`
 		TotalLinesRemoved  int     `json:"total_lines_removed,omitempty"`
 	} `json:"cost,omitempty"` // v2.0.25+ 新增
+	// ContextWindow 為 Claude Code 直接提供的 context window 使用量。
+	// 此欄位比 transcript 解析更準確（worktree session 也能正確讀取），
+	// 應優先使用此欄位，transcript 作為 fallback。
+	// ContextWindowSize == 0 表示舊版 Claude Code 不提供此資料；> 0 才視為有效。
+	ContextWindow struct {
+		// TotalInputTokens / TotalOutputTokens：整個 session 的累計量，僅供參考，不用於進度條。
+		TotalInputTokens  int `json:"total_input_tokens,omitempty"`
+		TotalOutputTokens int `json:"total_output_tokens,omitempty"`
+		// ContextWindowSize 為此 session 實際使用的 context window 大小（非理論最大值）。
+		ContextWindowSize int `json:"context_window_size,omitempty"`
+		CurrentUsage      struct {
+			InputTokens int `json:"input_tokens,omitempty"`
+			// OutputTokens 已解析但不計入 context 使用量：
+			// context window 壓力由 input+cache tokens 決定；output tokens 延伸自同一 window，
+			// 不單獨占用 context 空間。與 tracker.go usageFromLines 的計算方式一致。
+			OutputTokens             int `json:"output_tokens,omitempty"`
+			CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
+			CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
+		} `json:"current_usage,omitempty"`
+		// UsedPercentage / RemainingPercentage：由 Claude Code 計算，僅供參考。
+		// 進度條使用 BuildFromTokens 自行計算，保持與 bar 渲染邏輯一致。
+		UsedPercentage      int `json:"used_percentage,omitempty"`
+		RemainingPercentage int `json:"remaining_percentage,omitempty"`
+	} `json:"context_window,omitempty"`
 	AgentID   string `json:"agent_id,omitempty"`
 	AgentType string `json:"agent_type,omitempty"`
 	Worktree  struct {
