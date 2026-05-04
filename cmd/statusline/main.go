@@ -47,15 +47,21 @@ func main() {
 		fmt.Fprintf(os.Stderr, "statusline: failed to read transcript %q: %v\n", input.TranscriptPath, err)
 	}
 
-	// 決定 context window 大小：
-	// 1. transcript 最後一筆 usage 的 message.model（最準確，對應實際產生 token 的模型）
-	// 2. fallback 到 input.Model.ID（session 當前設定的模型）
-	// 3. STATUSLINE_MAX_TOKENS 環境變數可覆寫 maxTokens（effectiveModelID 保留供 debug 輸出）
+	// 決定 context window 大小與 maxTokens（優先級由高到低）：
+	// 1. input.ContextWindow.ContextWindowSize（Claude Code 直接提供，最準確，worktree 也有效）
+	// 2. transcript 最後一筆 usage 的 message.model → contextWindowForModel()
+	// 3. fallback 到 input.Model.ID → contextWindowForModel()
+	// 4. STATUSLINE_MAX_TOKENS 環境變數可覆寫（effectiveModelID 保留供 debug 輸出）
 	effectiveModelID := context.InferModelFromLines(lines)
 	if effectiveModelID == "" {
 		effectiveModelID = input.Model.ID
 	}
-	maxTokens := contextWindowForModel(effectiveModelID)
+	var maxTokens int
+	if input.ContextWindow.ContextWindowSize > 0 {
+		maxTokens = input.ContextWindow.ContextWindowSize
+	} else {
+		maxTokens = contextWindowForModel(effectiveModelID)
+	}
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
 		switch {
@@ -78,9 +84,16 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// Only suppress context on actual read error (err != nil).
-			// Empty transcript path (new session) returns (nil, nil) and should
-			// still produce the zero-usage display via AnalyzeDetailedFromLines(nil).
+			// 優先使用 input.ContextWindow（Claude Code 直接提供，worktree session 也有效）。
+			// Worktree session 的 transcript_path 指向只含 metadata 的小檔案，
+			// 導致 transcript 解析誤判為 NoUsageData（📡）。ContextWindow 則不受此影響。
+			if input.ContextWindow.ContextWindowSize > 0 {
+				u := input.ContextWindow.CurrentUsage
+				tokens := u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
+				results <- statusline.Result{Type: "context", Data: context.BuildFromTokens(tokens, maxTokens)}
+				return
+			}
+			// Fallback：較舊的 Claude Code 版本沒有 context_window 欄位，從 transcript 解析。
 			if lines == nil && err != nil {
 				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
 				return
