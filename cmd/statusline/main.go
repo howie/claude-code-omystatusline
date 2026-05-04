@@ -57,10 +57,13 @@ func main() {
 		effectiveModelID = input.Model.ID
 	}
 	var maxTokens int
+	var maxTokensSource string
 	if input.ContextWindow.ContextWindowSize > 0 {
 		maxTokens = input.ContextWindow.ContextWindowSize
+		maxTokensSource = "ContextWindow"
 	} else {
 		maxTokens = contextWindowForModel(effectiveModelID)
+		maxTokensSource = "model-inference"
 	}
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
@@ -87,14 +90,19 @@ func main() {
 			// 優先使用 input.ContextWindow（Claude Code 直接提供，worktree session 也有效）。
 			// Worktree session 的 transcript_path 指向只含 metadata 的小檔案，
 			// 導致 transcript 解析誤判為 NoUsageData（📡）。ContextWindow 則不受此影響。
+			// tokens==0 時顯示 0%（而非 📡）：代表 session 尚未完成第一次 API call，
+			// 不是「無法取得資料」，與 metadata-only transcript 情境語意不同。
 			if input.ContextWindow.ContextWindowSize > 0 {
 				u := input.ContextWindow.CurrentUsage
+				// output tokens 不計入：context window 壓力由 input+cache 決定，
+				// 與 usageFromLines 的計算方式一致（見 tracker.go）。
 				tokens := u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
 				results <- statusline.Result{Type: "context", Data: context.BuildFromTokens(tokens, maxTokens)}
 				return
 			}
 			// Fallback：較舊的 Claude Code 版本沒有 context_window 欄位，從 transcript 解析。
-			if lines == nil && err != nil {
+			// lines == nil（不論 err 是否有值）時無可解析的資料，直接回傳 nil 使 context 段落為空。
+			if lines == nil {
 				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
 				return
 			}
@@ -411,8 +419,8 @@ func main() {
 		{Content: statusline.ColorReset, Priority: 0},
 	}
 	if os.Getenv("STATUSLINE_DEBUG") == "1" {
-		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d hasData=%v effectiveModel=%q maxTokens=%d\n",
-			termWidth, cfg.OverflowMode, contextTokens, contextHasData, effectiveModelID, maxTokens)
+		fmt.Fprintf(os.Stderr, "[debug] termWidth=%d overflowMode=%q tokens=%d hasData=%v effectiveModel=%q maxTokens=%d maxTokensSource=%q\n",
+			termWidth, cfg.OverflowMode, contextTokens, contextHasData, effectiveModelID, maxTokens, maxTokensSource)
 		total := 0
 		for _, seg := range line1Segments {
 			if seg.Content == "" {
