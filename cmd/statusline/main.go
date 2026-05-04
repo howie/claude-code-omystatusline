@@ -109,7 +109,10 @@ func main() {
 				return
 			}
 			// Fallback：較舊的 Claude Code 版本沒有 context_window 欄位，從 transcript 解析。
-			if lines == nil {
+			// lines == nil && err != nil → 實際讀取失敗，不顯示 context 段落。
+			// lines == nil && err == nil → 空 transcript_path（新 session 尚無資料），
+			// 仍傳入 nil 給 AnalyzeDetailedFromLines，顯示 📡 而非完全隱藏段落。
+			if lines == nil && err != nil {
 				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
 				return
 			}
