@@ -121,6 +121,9 @@ func FormatContextParts(contextLength, maxTokens int) (bar string, info string) 
 		maxTokens = DefaultMaxTokens
 	}
 	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
+	if percentage < 0 {
+		percentage = 0
+	}
 	if percentage > 100 {
 		percentage = 100
 	}
@@ -156,6 +159,9 @@ func buildContextData(contextLength, maxTokens int, noUsageData bool) *ContextDa
 	}
 
 	percentage := int(float64(contextLength) * 100.0 / float64(maxTokens))
+	if percentage < 0 {
+		percentage = 0
+	}
 	if percentage > 100 {
 		percentage = 100
 	}
