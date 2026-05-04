@@ -25,6 +25,11 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
+const (
+	maxTokensSourceContextWindow  = "ContextWindow"
+	maxTokensSourceModelInference = "model-inference"
+)
+
 func main() {
 	var input statusline.Input
 	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
@@ -52,18 +57,21 @@ func main() {
 	// 2. transcript 最後一筆 usage 的 message.model → contextWindowForModel()
 	// 3. fallback 到 input.Model.ID → contextWindowForModel()
 	// 4. STATUSLINE_MAX_TOKENS 環境變數可覆寫（effectiveModelID 保留供 debug 輸出）
-	effectiveModelID := context.InferModelFromLines(lines)
-	if effectiveModelID == "" {
-		effectiveModelID = input.Model.ID
-	}
+	hasContextWindow := input.ContextWindow.ContextWindowSize > 0
+	var effectiveModelID string
 	var maxTokens int
 	var maxTokensSource string
-	if input.ContextWindow.ContextWindowSize > 0 {
+	if hasContextWindow {
 		maxTokens = input.ContextWindow.ContextWindowSize
-		maxTokensSource = "ContextWindow"
+		maxTokensSource = maxTokensSourceContextWindow
+		effectiveModelID = input.Model.ID
 	} else {
+		effectiveModelID = context.InferModelFromLines(lines)
+		if effectiveModelID == "" {
+			effectiveModelID = input.Model.ID
+		}
 		maxTokens = contextWindowForModel(effectiveModelID)
-		maxTokensSource = "model-inference"
+		maxTokensSource = maxTokensSourceModelInference
 	}
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
@@ -92,7 +100,7 @@ func main() {
 			// 導致 transcript 解析誤判為 NoUsageData（📡）。ContextWindow 則不受此影響。
 			// tokens==0 時顯示 0%（而非 📡）：代表 session 尚未完成第一次 API call，
 			// 不是「無法取得資料」，與 metadata-only transcript 情境語意不同。
-			if input.ContextWindow.ContextWindowSize > 0 {
+			if hasContextWindow {
 				u := input.ContextWindow.CurrentUsage
 				// output tokens 不計入：context window 壓力由 input+cache 決定，
 				// 與 usageFromLines 的計算方式一致（見 tracker.go）。
@@ -101,7 +109,6 @@ func main() {
 				return
 			}
 			// Fallback：較舊的 Claude Code 版本沒有 context_window 欄位，從 transcript 解析。
-			// lines == nil（不論 err 是否有值）時無可解析的資料，直接回傳 nil 使 context 段落為空。
 			if lines == nil {
 				results <- statusline.Result{Type: "context", Data: (*context.ContextData)(nil)}
 				return
