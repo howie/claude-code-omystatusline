@@ -511,7 +511,7 @@ func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
 	switch {
 	case strings.Contains(id, "haiku"):
-		return 200_000
+		return 200_000 // Haiku 從未超過 200K；如有更大版本請重新評估
 	case strings.Contains(id, "sonnet"):
 		if claudeModelIs1M(id) {
 			return 1_000_000
