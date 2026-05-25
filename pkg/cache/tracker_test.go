@@ -27,6 +27,7 @@ func TestCalculateNormal(t *testing.T) {
 	info := Calculate(lines)
 	if info == nil {
 		t.Fatal("expected non-nil CacheInfo")
+		return
 	}
 	if info.HitRate != 80 {
 		t.Errorf("expected HitRate=80, got %d", info.HitRate)
@@ -67,6 +68,7 @@ func TestCalculateSkipsSidechain(t *testing.T) {
 	info := Calculate(lines)
 	if info == nil {
 		t.Fatal("expected non-nil CacheInfo")
+		return
 	}
 	// 應該取得第一行（非 sidechain）的資料
 	if info.HitRate != 50 {
@@ -127,6 +129,7 @@ func TestCalculateAllCacheRead(t *testing.T) {
 	info := Calculate(lines)
 	if info == nil {
 		t.Fatal("expected non-nil CacheInfo")
+		return
 	}
 	if info.HitRate != 100 {
 		t.Errorf("expected HitRate=100, got %d", info.HitRate)
@@ -150,6 +153,7 @@ func TestCalculateNoCacheRead(t *testing.T) {
 	info := Calculate(lines)
 	if info == nil {
 		t.Fatal("expected non-nil CacheInfo")
+		return
 	}
 	if info.HitRate != 0 {
 		t.Errorf("expected HitRate=0, got %d", info.HitRate)

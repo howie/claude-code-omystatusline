@@ -504,25 +504,59 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 	}
 }
 
-// contextWindowForModel 根據模型 ID 回傳有效 context window 大小（tokens）。
-// Haiku/Sonnet 數值反推自實測 auto-compact 觸發點（非模型理論最大值）；
-// Opus 數值為保守估計（尚無足夠觸發觀測，預留較大空間）。
-// Haiku: 200K | Sonnet: 500K | Opus: 800K | 未知非空: 500K（保守值）| 空字串: DefaultMaxTokens。
+// contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens）。
+// 依官方 Anthropic 規格：Sonnet/Opus major >= 5，或 major == 4 且 minor >= 6 時為 1M；其餘為 200K。
+// 此函式僅作 fallback；現代 Claude Code 版本會透過 input.ContextWindow 提供精確值。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
 	switch {
 	case strings.Contains(id, "haiku"):
-		return 200_000
+		return 200_000 // Haiku 從未超過 200K；如有更大版本請重新評估
 	case strings.Contains(id, "sonnet"):
-		return 500_000
+		if claudeModelIs1M(id) {
+			return 1_000_000
+		}
+		return 200_000
 	case strings.Contains(id, "opus"):
-		return 800_000
+		if claudeModelIs1M(id) {
+			return 1_000_000
+		}
+		return 200_000
 	case id != "":
-		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 500K context window default\n", modelID)
-		return 500_000
+		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 200K context window fallback\n", modelID)
+		return 200_000
 	default:
 		return context.DefaultMaxTokens
 	}
+}
+
+// claudeModelIs1M 回報 claude 模型是否有 1M context window。
+// 解析 claude-*-{major}-{minor}[-date] 中的 major/minor，版本規則：
+//   - major >= 5 → 1M（為未來大版本預留）
+//   - major == 4 && minor >= 6 → 1M（Sonnet 4.6+、Opus 4.6+）
+//   - 其他 → false（保守 fallback）
+func claudeModelIs1M(id string) bool {
+	major, minor := claudeModelVersion(id)
+	return major >= 5 || (major == 4 && minor >= 6)
+}
+
+// claudeModelVersion 從 claude-*-{major}-{minor}[-date] 格式解析 (major, minor)。
+// 從 ID 末端向前掃描，找最後兩個連續的小整數 token（< 100，避免誤認 date suffix）。
+// 解析失敗時回傳 (-1, -1)。
+func claudeModelVersion(id string) (int, int) {
+	parts := strings.Split(id, "-")
+	for i := len(parts) - 1; i >= 1; i-- {
+		minor, err1 := strconv.Atoi(parts[i])
+		major, err2 := strconv.Atoi(parts[i-1])
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		// 限制在合理版本範圍內（排除 date suffix 如 20250514）
+		if major > 0 && major < 100 && minor >= 0 && minor < 100 {
+			return major, minor
+		}
+	}
+	return -1, -1
 }
 
 func joinWithSep(parts []string, sep string) string {

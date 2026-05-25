@@ -14,6 +14,7 @@ func TestAnalyzeNoTools(t *testing.T) {
 	result := Analyze(lines)
 	if len(result) != 0 {
 		t.Fatalf("expected no tools, got %d", len(result))
+		return
 	}
 }
 
@@ -52,12 +53,15 @@ func TestAnalyzeActiveTools(t *testing.T) {
 	result := Analyze(lines)
 	if len(result) != 2 {
 		t.Fatalf("expected 2 active tools, got %d", len(result))
+		return
 	}
 	if result[0].Name != "Read" {
 		t.Fatalf("expected first tool 'Read', got %q", result[0].Name)
+		return
 	}
 	if result[1].Name != "Write" {
 		t.Fatalf("expected second tool 'Write', got %q", result[1].Name)
+		return
 	}
 }
 
@@ -92,6 +96,7 @@ func TestAnalyzeCompletedTool(t *testing.T) {
 	result := Analyze(lines)
 	if len(result) != 0 {
 		t.Fatalf("expected no active tools (tool completed), got %d", len(result))
+		return
 	}
 }
 
@@ -104,9 +109,11 @@ func TestFormat(t *testing.T) {
 	result := Format(tools)
 	if !strings.Contains(result, "◐ Read: /src/main.go") {
 		t.Fatalf("expected formatted tool with target, got %q", result)
+		return
 	}
 	if !strings.Contains(result, "◐ Write") {
 		t.Fatalf("expected formatted tool without target, got %q", result)
+		return
 	}
 }
 
@@ -115,5 +122,6 @@ func TestTruncatePath(t *testing.T) {
 	result := truncatePath(long, 30)
 	if len(result) > 30 {
 		t.Fatalf("expected truncated path <= 30 chars, got %d: %q", len(result), result)
+		return
 	}
 }

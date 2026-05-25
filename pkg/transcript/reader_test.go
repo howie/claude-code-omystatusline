@@ -19,25 +19,30 @@ func TestReadTail(t *testing.T) {
 	}
 	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644); err != nil {
 		t.Fatal(err)
+		return
 	}
 
 	result, err := ReadTail(path, 3)
 	if err != nil {
 		t.Fatal(err)
+		return
 	}
 
 	if len(result) != 3 {
 		t.Fatalf("expected 3 lines, got %d", len(result))
+		return
 	}
 
 	// 第一行是第 2 行（index 1）— "assistant" line
 	if result[0].Parsed == nil {
 		t.Fatal("expected second line to be valid JSON")
+		return
 	}
 
 	// 第二行不是有效 JSON
 	if result[1].Parsed != nil {
 		t.Fatal("expected 'not json line' to have nil Parsed")
+		return
 	}
 }
 
@@ -50,13 +55,16 @@ func TestReadAll(t *testing.T) {
 `
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatal(err)
+		return
 	}
 	result, err := ReadAll(path)
 	if err != nil {
 		t.Fatal(err)
+		return
 	}
 	if len(result) != 3 {
 		t.Fatalf("ReadAll: expected 3 lines, got %d", len(result))
+		return
 	}
 }
 
@@ -64,9 +72,11 @@ func TestReadTailEmptyPath(t *testing.T) {
 	result, err := ReadTail("", 10)
 	if err != nil {
 		t.Fatal("expected no error for empty path")
+		return
 	}
 	if result != nil {
 		t.Fatal("expected nil result for empty path")
+		return
 	}
 }
 
@@ -82,5 +92,6 @@ func TestFilterBySession(t *testing.T) {
 	result := FilterBySession(lines, "s1")
 	if len(result) != 2 {
 		t.Fatalf("expected 2 lines for session s1, got %d", len(result))
+		return
 	}
 }

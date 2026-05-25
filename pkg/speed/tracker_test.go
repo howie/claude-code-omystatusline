@@ -20,6 +20,7 @@ func TestExtractOutputTokens(t *testing.T) {
 	result := extractOutputTokens(lines)
 	if result != 500 {
 		t.Fatalf("expected 500, got %d", result)
+		return
 	}
 }
 
@@ -31,6 +32,7 @@ func TestExtractOutputTokensEmpty(t *testing.T) {
 	result := extractOutputTokens(lines)
 	if result != 0 {
 		t.Fatalf("expected 0, got %d", result)
+		return
 	}
 }
 
@@ -39,9 +41,11 @@ func TestFormat(t *testing.T) {
 	result := Format(info)
 	if result != "42 tok/s" {
 		t.Fatalf("expected '42 tok/s', got %q", result)
+		return
 	}
 
 	if Format(nil) != "" {
 		t.Fatal("expected empty string for nil")
+		return
 	}
 }

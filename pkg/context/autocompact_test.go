@@ -14,6 +14,7 @@ func TestDetectAutocompactNone(t *testing.T) {
 	result := DetectAutocompact(lines)
 	if result.Detected {
 		t.Fatal("expected no autocompact detected")
+		return
 	}
 }
 
@@ -26,9 +27,11 @@ func TestDetectAutocompactSummary(t *testing.T) {
 	result := DetectAutocompact(lines)
 	if !result.Detected {
 		t.Fatal("expected autocompact detected")
+		return
 	}
 	if result.Count != 2 {
 		t.Fatalf("expected count 2, got %d", result.Count)
+		return
 	}
 }
 
@@ -36,17 +39,20 @@ func TestFormatAutocompact(t *testing.T) {
 	// Not detected
 	if FormatAutocompact(&AutocompactInfo{}) != "" {
 		t.Fatal("expected empty for not detected")
+		return
 	}
 
 	// Single compression
 	result := FormatAutocompact(&AutocompactInfo{Detected: true, Count: 1})
 	if !strings.Contains(result, "⚠ compressed") {
 		t.Fatalf("expected compressed warning, got %q", result)
+		return
 	}
 
 	// Multiple compressions
 	result = FormatAutocompact(&AutocompactInfo{Detected: true, Count: 3})
 	if !strings.Contains(result, "×3") {
 		t.Fatalf("expected count in format, got %q", result)
+		return
 	}
 }

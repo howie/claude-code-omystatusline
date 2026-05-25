@@ -117,6 +117,7 @@ func TestWrapLineWrapsToSecondLine(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 lines, got %d: %q", len(lines), got)
+		return
 	}
 	if !strings.Contains(lines[0], "AAAAAAA") {
 		t.Errorf("line1 should contain AAAAAAA, got %q", lines[0])
@@ -144,6 +145,7 @@ func TestWrapLineStripsLeadingDivider(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 lines, got %d: %q", len(lines), got)
+		return
 	}
 	// " | " 應被去掉，改為前綴 "↳ "
 	if strings.HasPrefix(lines[1], " | ") {
@@ -217,6 +219,7 @@ func TestWrapLineWithAnsiColors(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 lines with ANSI segments, got %d: %q", len(lines), got)
+		return
 	}
 	if VisibleWidth(lines[0]) > 25 {
 		t.Errorf("line1 visible width %d exceeds maxWidth 25", VisibleWidth(lines[0]))

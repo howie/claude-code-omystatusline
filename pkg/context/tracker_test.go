@@ -24,6 +24,7 @@ func TestFormatNumber(t *testing.T) {
 		t.Run(fmt.Sprintf("num_%d", input), func(t *testing.T) {
 			if got := formatNumber(input); got != expected {
 				t.Fatalf("formatNumber(%d) = %q, want %q", input, got, expected)
+				return
 			}
 		})
 	}
@@ -32,12 +33,15 @@ func TestFormatNumber(t *testing.T) {
 func TestGetColor(t *testing.T) {
 	if color := getColor(40); color != statusline.ColorCtxGreen {
 		t.Fatalf("expected ColorCtxGreen for 40%%, got %q", color)
+		return
 	}
 	if color := getColor(70); color != statusline.ColorCtxGold {
 		t.Fatalf("expected ColorCtxGold for 70%%, got %q", color)
+		return
 	}
 	if color := getColor(90); color != statusline.ColorCtxRed {
 		t.Fatalf("expected ColorCtxRed for 90%%, got %q", color)
+		return
 	}
 }
 
@@ -49,6 +53,7 @@ func TestAnalyzeMaxTokens(t *testing.T) {
 	line := `{"message":{"usage":{"input_tokens":100000}},"isSidechain":false}`
 	if err := os.WriteFile(path, []byte(line), 0644); err != nil {
 		t.Fatalf("failed to write transcript: %v", err)
+		return
 	}
 
 	tests := []struct {
@@ -67,6 +72,7 @@ func TestAnalyzeMaxTokens(t *testing.T) {
 			result := Analyze(path, tt.maxTokens)
 			if !strings.Contains(result, tt.wantPct) {
 				t.Fatalf("Analyze with maxTokens=%d: expected %q in result, got %q", tt.maxTokens, tt.wantPct, result)
+				return
 			}
 		})
 	}
@@ -76,6 +82,7 @@ func TestAnalyzeEmptyPath(t *testing.T) {
 	result := Analyze("", 0)
 	if !strings.Contains(result, "0%") {
 		t.Fatalf("Analyze with empty path should show 0%%, got %q", result)
+		return
 	}
 }
 
@@ -123,6 +130,7 @@ func TestAnalyzeDetailedFromLines(t *testing.T) {
 	data := AnalyzeDetailedFromLines(lines, 200000)
 	if data == nil {
 		t.Fatal("expected non-nil ContextData")
+		return
 	}
 	if data.Tokens != 148027 {
 		t.Errorf("expected Tokens=148027, got %d", data.Tokens)
@@ -161,6 +169,7 @@ func TestAnalyzeDetailedFromLines_MetadataOnly(t *testing.T) {
 	data := AnalyzeDetailedFromLines(lines, 1_000_000)
 	if data == nil {
 		t.Fatal("expected non-nil ContextData")
+		return
 	}
 	if !data.NoUsageData {
 		t.Error("expected NoUsageData=true for metadata-only transcript")
@@ -253,6 +262,7 @@ func TestAnalyzeDetailedFromLines_NoUsageData_FalseForNewSession(t *testing.T) {
 	data := AnalyzeDetailedFromLines(nil, 200000)
 	if data == nil {
 		t.Fatal("expected non-nil ContextData")
+		return
 	}
 	if data.NoUsageData {
 		t.Error("expected NoUsageData=false for nil lines")
@@ -288,11 +298,13 @@ func TestAnalyzeDetailed_MetadataOnly(t *testing.T) {
 `
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("failed to write transcript: %v", err)
+		return
 	}
 
 	data := AnalyzeDetailed(path, 1_000_000)
 	if data == nil {
 		t.Fatal("expected non-nil ContextData")
+		return
 	}
 	if !data.NoUsageData {
 		t.Error("AnalyzeDetailed should set NoUsageData=true for metadata-only file")
@@ -307,6 +319,7 @@ func TestAnalyzeDetailed_UnreadablePath(t *testing.T) {
 	data := AnalyzeDetailed("/nonexistent/path.jsonl", 200000)
 	if data == nil {
 		t.Fatal("expected non-nil ContextData")
+		return
 	}
 	if data.NoUsageData {
 		t.Error("AnalyzeDetailed should not set NoUsageData for unreadable file")
@@ -319,6 +332,7 @@ func TestAnalyzeDetailed_EmptyPath(t *testing.T) {
 	data := AnalyzeDetailed("", 200000)
 	if data == nil {
 		t.Fatal("expected non-nil ContextData")
+		return
 	}
 	if data.NoUsageData {
 		t.Error("AnalyzeDetailed with empty path must not set NoUsageData")
@@ -357,6 +371,7 @@ func TestCalculateUsage(t *testing.T) {
 	}
 	if total := calculateUsageFromLines(lines); total != 175 {
 		t.Fatalf("expected total usage 175, got %d", total)
+		return
 	}
 }
 
@@ -501,6 +516,7 @@ func TestBuildFromTokens(t *testing.T) {
 		data := BuildFromTokens(tokens, 500_000)
 		if data == nil {
 			t.Fatal("expected non-nil ContextData")
+			return
 		}
 		if data.NoUsageData {
 			t.Error("BuildFromTokens must never set NoUsageData: usage came directly from Claude Code")
@@ -525,6 +541,7 @@ func TestBuildFromTokens(t *testing.T) {
 		data := BuildFromTokens(0, 200_000)
 		if data == nil {
 			t.Fatal("expected non-nil ContextData")
+			return
 		}
 		if data.NoUsageData {
 			t.Error("BuildFromTokens with tokens=0 must NOT set NoUsageData: it is a valid 0%, not metadata-only")
@@ -544,6 +561,7 @@ func TestBuildFromTokens(t *testing.T) {
 		data := BuildFromTokens(DefaultMaxTokens/2, 0)
 		if data == nil {
 			t.Fatal("expected non-nil ContextData")
+			return
 		}
 		if data.Percentage != 50 {
 			t.Errorf("Percentage = %d, want 50 (DefaultMaxTokens/2 out of DefaultMaxTokens)", data.Percentage)
