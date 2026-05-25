@@ -27,14 +27,17 @@ func TestFormatModel(t *testing.T) {
 			if tt.wantPlain {
 				if result != tt.input {
 					t.Fatalf("FormatModel(%q) should return unchanged, got %q", tt.input, result)
+					return
 				}
 				return
 			}
 			if !strings.Contains(result, tt.wantColor) {
 				t.Fatalf("FormatModel(%q) should contain color %q, got %q", tt.input, tt.wantColor, result)
+				return
 			}
 			if !strings.HasSuffix(result, ColorReset) {
 				t.Fatalf("FormatModel(%q) should end with ColorReset, got %q", tt.input, result)
+				return
 			}
 		})
 	}
@@ -51,11 +54,13 @@ func TestIsSystemMessage(t *testing.T) {
 	for _, msg := range systemMessages {
 		if !isSystemMessage(msg) {
 			t.Fatalf("expected %q to be classified as system message", msg)
+			return
 		}
 	}
 
 	if isSystemMessage("normal user content") {
 		t.Fatal("expected regular content to be treated as user message")
+		return
 	}
 }
 
@@ -73,23 +78,28 @@ func TestFormatUserMessage(t *testing.T) {
 
 	if len(lines) != 4 {
 		t.Fatalf("expected 4 lines (3 content + ellipsis), got %d", len(lines))
+		return
 	}
 
 	if !strings.Contains(lines[0], strings.Repeat("A", 77)+"...") {
 		t.Fatalf("first line should be truncated with ellipsis, got %q", lines[0])
+		return
 	}
 
 	for i := 0; i < 3; i++ {
 		if !strings.HasPrefix(lines[i], fmt.Sprintf("%s｜%s", ColorReset, ColorGreen)) {
 			t.Fatalf("content line %d missing expected color prefix: %q", i, lines[i])
+			return
 		}
 		if !strings.HasSuffix(lines[i], ColorReset) {
 			t.Fatalf("content line %d missing color reset suffix: %q", i, lines[i])
+			return
 		}
 	}
 
 	if !strings.Contains(lines[3], "還有 1 行") {
 		t.Fatalf("ellipsis line should mention remaining content, got %q", lines[3])
+		return
 	}
 }
 
@@ -112,20 +122,25 @@ func TestFormatLinesChanged(t *testing.T) {
 			if tt.added == 0 && tt.removed == 0 {
 				if result != "" {
 					t.Fatalf("expected empty string for zero values, got %q", result)
+					return
 				}
 				return
 			}
 			if tt.added > 0 && !strings.Contains(result, fmt.Sprintf("+%d", tt.added)) {
 				t.Fatalf("expected +%d in result, got %q", tt.added, result)
+				return
 			}
 			if tt.removed > 0 && !strings.Contains(result, fmt.Sprintf("-%d", tt.removed)) {
 				t.Fatalf("expected -%d in result, got %q", tt.removed, result)
+				return
 			}
 			if tt.added > 0 && !strings.Contains(result, ColorGreen) {
 				t.Fatalf("expected green color for additions, got %q", result)
+				return
 			}
 			if tt.removed > 0 && !strings.Contains(result, ColorRed) {
 				t.Fatalf("expected red color for removals, got %q", result)
+				return
 			}
 		})
 	}
@@ -154,17 +169,21 @@ func TestFormatCacheDisplay(t *testing.T) {
 			if tt.wantEmpty {
 				if result != "" {
 					t.Fatalf("expected empty for %q, got %q", tt.cacheStr, result)
+					return
 				}
 				return
 			}
 			if !strings.Contains(result, tt.wantColor) {
 				t.Fatalf("expected color %q for hitRate %d, got %q", tt.wantColor, tt.hitRate, result)
+				return
 			}
 			if !strings.Contains(result, tt.cacheStr) {
 				t.Fatalf("expected %q in result, got %q", tt.cacheStr, result)
+				return
 			}
 			if !strings.HasSuffix(result, ColorReset) {
 				t.Fatalf("expected ColorReset suffix, got %q", result)
+				return
 			}
 		})
 	}
@@ -191,14 +210,17 @@ func TestFormatCostColored(t *testing.T) {
 			if tt.wantEmpty {
 				if result != "" {
 					t.Fatalf("expected empty for cost %.2f, got %q", tt.cost, result)
+					return
 				}
 				return
 			}
 			if !strings.Contains(result, tt.wantColor) {
 				t.Fatalf("expected color %q for cost %.2f, got %q", tt.wantColor, tt.cost, result)
+				return
 			}
 			if !strings.Contains(result, fmt.Sprintf("$%.2f", tt.cost)) {
 				t.Fatalf("expected formatted cost in result, got %q", result)
+				return
 			}
 		})
 	}

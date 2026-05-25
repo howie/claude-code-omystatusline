@@ -53,6 +53,7 @@ func TestGetBranch_MainRepoWithWorktreesDir(t *testing.T) {
 	worktreesDir := filepath.Join(tmpDir, ".worktrees")
 	if err := os.Mkdir(worktreesDir, 0755); err != nil {
 		t.Fatalf("Failed to create .worktrees dir: %v", err)
+		return
 	}
 
 	// 獲取分支資訊
@@ -90,6 +91,7 @@ func TestGetBranch_ActualWorktree(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "README.md")
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
+		return
 	}
 	runGitCommand(t, tmpDir, "add", "README.md")
 	runGitCommand(t, tmpDir, "commit", "-m", "Initial commit")
@@ -277,5 +279,6 @@ func runGitCommand(t *testing.T, dir string, args ...string) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Git command failed: git %v\nError: %v\nOutput: %s", args, err, output)
+		return
 	}
 }

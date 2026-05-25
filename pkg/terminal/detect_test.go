@@ -9,6 +9,7 @@ func TestDetectASCIForced(t *testing.T) {
 
 	if mode := Detect(); mode != ModeASCII {
 		t.Fatalf("expected ModeASCII when CLAUDE_STATUSLINE_ASCII=1, got %d", mode)
+		return
 	}
 }
 
@@ -18,6 +19,7 @@ func TestDetectTrueColor(t *testing.T) {
 
 	if mode := Detect(); mode != ModeTrueColor {
 		t.Fatalf("expected ModeTrueColor for COLORTERM=truecolor, got %d", mode)
+		return
 	}
 }
 
@@ -27,6 +29,7 @@ func TestDetect24bit(t *testing.T) {
 
 	if mode := Detect(); mode != ModeTrueColor {
 		t.Fatalf("expected ModeTrueColor for COLORTERM=24bit, got %d", mode)
+		return
 	}
 }
 
@@ -37,6 +40,7 @@ func TestDetect256Color(t *testing.T) {
 
 	if mode := Detect(); mode != Mode256Color {
 		t.Fatalf("expected Mode256Color for TERM=xterm-256color, got %d", mode)
+		return
 	}
 }
 
@@ -47,5 +51,6 @@ func TestDetectDumbTerminal(t *testing.T) {
 
 	if mode := Detect(); mode != ModeASCII {
 		t.Fatalf("expected ModeASCII for TERM=dumb, got %d", mode)
+		return
 	}
 }

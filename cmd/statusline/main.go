@@ -504,22 +504,27 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 	}
 }
 
-// contextWindowForModel 根據模型 ID 回傳有效 context window 大小（tokens）。
-// Haiku/Sonnet 數值反推自實測 auto-compact 觸發點（非模型理論最大值）；
-// Opus 數值為保守估計（尚無足夠觸發觀測，預留較大空間）。
-// Haiku: 200K | Sonnet: 500K | Opus: 800K | 未知非空: 500K（保守值）| 空字串: DefaultMaxTokens。
+// contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens）。
+// 依官方 Anthropic 規格：Opus 4.6/4.7、Sonnet 4.6 為 1M；其餘含 Haiku 為 200K。
+// 此函式僅作 fallback；現代 Claude Code 版本會透過 input.ContextWindow 提供精確值。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
 	switch {
 	case strings.Contains(id, "haiku"):
 		return 200_000
+	// Sonnet 4.6+ → 1M；4.5 以下 → 200K
+	case strings.Contains(id, "sonnet-4-6"):
+		return 1_000_000
 	case strings.Contains(id, "sonnet"):
-		return 500_000
+		return 200_000
+	// Opus 4.6/4.7+ → 1M；4.5 以下 → 200K
+	case strings.Contains(id, "opus-4-6"), strings.Contains(id, "opus-4-7"):
+		return 1_000_000
 	case strings.Contains(id, "opus"):
-		return 800_000
+		return 200_000
 	case id != "":
-		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 500K context window default\n", modelID)
-		return 500_000
+		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 200K context window fallback\n", modelID)
+		return 200_000
 	default:
 		return context.DefaultMaxTokens
 	}

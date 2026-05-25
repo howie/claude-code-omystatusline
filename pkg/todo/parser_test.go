@@ -14,6 +14,7 @@ func TestAnalyzeNoTodo(t *testing.T) {
 	result := Analyze(lines)
 	if result != nil {
 		t.Fatal("expected nil for no TodoWrite")
+		return
 	}
 }
 
@@ -42,18 +43,23 @@ func TestAnalyzeTodoInProgress(t *testing.T) {
 	result := Analyze(lines)
 	if result == nil {
 		t.Fatal("expected TodoInfo")
+		return
 	}
 	if result.Total != 3 {
 		t.Fatalf("expected 3 total, got %d", result.Total)
+		return
 	}
 	if result.Completed != 1 {
 		t.Fatalf("expected 1 completed, got %d", result.Completed)
+		return
 	}
 	if result.InProgressName != "Task B" {
 		t.Fatalf("expected in-progress 'Task B', got %q", result.InProgressName)
+		return
 	}
 	if result.AllComplete {
 		t.Fatal("expected AllComplete to be false")
+		return
 	}
 }
 
@@ -81,9 +87,11 @@ func TestAnalyzeTodoAllComplete(t *testing.T) {
 	result := Analyze(lines)
 	if result == nil {
 		t.Fatal("expected TodoInfo")
+		return
 	}
 	if !result.AllComplete {
 		t.Fatal("expected AllComplete to be true")
+		return
 	}
 }
 
@@ -93,9 +101,11 @@ func TestFormat(t *testing.T) {
 	result := Format(info)
 	if !strings.Contains(result, "▸ Build features") {
 		t.Fatalf("expected in-progress format, got %q", result)
+		return
 	}
 	if !strings.Contains(result, "(2/5)") {
 		t.Fatalf("expected progress count, got %q", result)
+		return
 	}
 
 	// All complete
@@ -103,10 +113,12 @@ func TestFormat(t *testing.T) {
 	result = Format(info)
 	if !strings.Contains(result, "✓ All complete") {
 		t.Fatalf("expected all complete format, got %q", result)
+		return
 	}
 
 	// Nil
 	if Format(nil) != "" {
 		t.Fatal("expected empty string for nil")
+		return
 	}
 }

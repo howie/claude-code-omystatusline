@@ -74,8 +74,8 @@ func TestContextWindowMaxTokens(t *testing.T) {
 	t.Run("zero ContextWindowSize falls back to model inference", func(t *testing.T) {
 		// ContextWindowSize==0 → contextWindowForModel used; verify the function exists
 		got := contextWindowForModel("claude-sonnet-4-6")
-		if got != 500_000 {
-			t.Errorf("contextWindowForModel(sonnet) = %d, want 500000", got)
+		if got != 1_000_000 {
+			t.Errorf("contextWindowForModel(sonnet-4-6) = %d, want 1000000", got)
 		}
 	})
 
@@ -113,19 +113,25 @@ func TestContextWindowForModel(t *testing.T) {
 		modelID string
 		want    int
 	}{
-		// Haiku: 200K（不變）
+		// Haiku: 200K（官方規格，不變）
 		{"haiku-base", "claude-haiku-4-5", 200_000},
 		{"haiku-dated-suffix", "claude-haiku-4-5-20251001", 200_000},
 		{"haiku-uppercase", "Claude-Haiku-4-5", 200_000},
-		// Sonnet: 500K（經驗校準，反推自 ~357K compact 點 ÷ 70%）
-		{"sonnet-46", "claude-sonnet-4-6", 500_000},
-		{"sonnet-45", "claude-sonnet-4-5", 500_000},
-		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 500_000},
-		// Opus: 800K（Opus context 較大，預留更多空間）
-		{"opus-47", "claude-opus-4-7", 800_000},
-		{"opus-46", "claude-opus-4-6", 800_000},
-		// 未知非空模型：保守 fallback 500K
-		{"unknown-future", "claude-future-1", 500_000},
+		// Sonnet 4.6+: 1M（官方規格）
+		{"sonnet-46", "claude-sonnet-4-6", 1_000_000},
+		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 1_000_000},
+		// Sonnet 4.5 以下: 200K（官方規格）
+		{"sonnet-45", "claude-sonnet-4-5", 200_000},
+		{"sonnet-45-dated", "claude-sonnet-4-5-20250929", 200_000},
+		// Opus 4.6/4.7: 1M（官方規格）
+		{"opus-47", "claude-opus-4-7", 1_000_000},
+		{"opus-46", "claude-opus-4-6", 1_000_000},
+		// Opus 4.5 以下: 200K（官方規格）
+		{"opus-45", "claude-opus-4-5", 200_000},
+		{"opus-45-dated", "claude-opus-4-5-20251101", 200_000},
+		{"opus-41", "claude-opus-4-1-20250805", 200_000},
+		// 未知非空模型：保守 fallback 200K
+		{"unknown-future", "claude-future-1", 200_000},
 		// 空字串：DefaultMaxTokens
 		{"empty-fallback", "", context.DefaultMaxTokens},
 	}
