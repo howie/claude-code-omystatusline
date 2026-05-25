@@ -103,8 +103,8 @@ Formatted status line output to stdout
 - `InferModelFromLines(lines)` - reads `message.model` from last usage entry; used for mixed-model sessions
 - `maxTokens` source of truth priority: transcript `message.model` → `input.Model.ID` → `STATUSLINE_MAX_TOKENS` env var
 - Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`; **official Anthropic specs**, fallback only):
-  - Haiku: 200K | Sonnet minor ≥ 6 (4.6+): 1M | Sonnet minor < 6: 200K | Opus minor ≥ 6 (4.6+): 1M | Opus minor < 6: 200K | unknown non-empty: 200K | empty: `DefaultMaxTokens`
-  - Version parsed via `claudeModelMinorVersion()`: matches `-4-X` pattern in model ID
+  - Haiku: 200K | Sonnet/Opus major ≥ 5 OR (major==4 AND minor ≥ 6): 1M | others: 200K | unknown non-empty: 200K | empty: `DefaultMaxTokens`
+  - Version parsed via `claudeModelVersion()`: scans from end for two consecutive small integers (< 100), ignores date suffixes
 - Generates visual progress bar (██████░░░░ format)
 - Color-coded warnings: green (<60%), gold (60-80%), red (≥80%)
 

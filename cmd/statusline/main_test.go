@@ -107,6 +107,37 @@ func TestContextWindowMaxTokens(t *testing.T) {
 	})
 }
 
+func TestClaudeModelVersion(t *testing.T) {
+	cases := []struct {
+		id        string
+		wantMajor int
+		wantMinor int
+	}{
+		{"claude-sonnet-4-6", 4, 6},
+		{"claude-opus-4-7-20251001", 4, 7},
+		{"claude-sonnet-4-5-20250929", 4, 5},
+		{"claude-sonnet-5-0", 5, 0},
+		{"claude-opus-4-1-20250805", 4, 1},
+		{"claude-haiku-4-5", 4, 5},
+		// date-only format (no minor) → not parseable as valid version
+		{"claude-sonnet-4-20250514", -1, -1},
+		// trailing prefix, no digit
+		{"claude-sonnet-4-", -1, -1},
+		// unknown format
+		{"claude-future-1", -1, -1},
+		{"", -1, -1},
+		{"sonnet-4-10", 4, 10},
+	}
+	for _, tc := range cases {
+		t.Run(tc.id, func(t *testing.T) {
+			maj, min := claudeModelVersion(strings.ToLower(tc.id))
+			if maj != tc.wantMajor || min != tc.wantMinor {
+				t.Errorf("claudeModelVersion(%q) = (%d, %d), want (%d, %d)", tc.id, maj, min, tc.wantMajor, tc.wantMinor)
+			}
+		})
+	}
+}
+
 func TestContextWindowForModel(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -121,6 +152,8 @@ func TestContextWindowForModel(t *testing.T) {
 		{"sonnet-46", "claude-sonnet-4-6", 1_000_000},
 		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 1_000_000},
 		{"sonnet-47-future", "claude-sonnet-4-7", 1_000_000},
+		// Sonnet 5.x：未來大版本，major >= 5 → 1M
+		{"sonnet-50-future-major", "claude-sonnet-5-0", 1_000_000},
 		// Sonnet 4.5 以下: 200K（官方規格）
 		{"sonnet-45", "claude-sonnet-4-5", 200_000},
 		{"sonnet-45-dated", "claude-sonnet-4-5-20250929", 200_000},
@@ -128,6 +161,8 @@ func TestContextWindowForModel(t *testing.T) {
 		{"opus-47", "claude-opus-4-7", 1_000_000},
 		{"opus-46", "claude-opus-4-6", 1_000_000},
 		{"opus-48-future", "claude-opus-4-8", 1_000_000},
+		// Opus 5.x：未來大版本，major >= 5 → 1M
+		{"opus-50-future-major", "claude-opus-5-0", 1_000_000},
 		// Opus 4.5 以下: 200K（官方規格）
 		{"opus-45", "claude-opus-4-5", 200_000},
 		{"opus-45-dated", "claude-opus-4-5-20251101", 200_000},
