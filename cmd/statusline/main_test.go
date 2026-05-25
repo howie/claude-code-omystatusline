@@ -117,15 +117,17 @@ func TestContextWindowForModel(t *testing.T) {
 		{"haiku-base", "claude-haiku-4-5", 200_000},
 		{"haiku-dated-suffix", "claude-haiku-4-5-20251001", 200_000},
 		{"haiku-uppercase", "Claude-Haiku-4-5", 200_000},
-		// Sonnet 4.6+: 1M（官方規格）
+		// Sonnet 4.6+: 1M（官方規格，minor >= 6）
 		{"sonnet-46", "claude-sonnet-4-6", 1_000_000},
 		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 1_000_000},
+		{"sonnet-47-future", "claude-sonnet-4-7", 1_000_000},
 		// Sonnet 4.5 以下: 200K（官方規格）
 		{"sonnet-45", "claude-sonnet-4-5", 200_000},
 		{"sonnet-45-dated", "claude-sonnet-4-5-20250929", 200_000},
-		// Opus 4.6/4.7: 1M（官方規格）
+		// Opus 4.6+: 1M（官方規格，minor >= 6）
 		{"opus-47", "claude-opus-4-7", 1_000_000},
 		{"opus-46", "claude-opus-4-6", 1_000_000},
+		{"opus-48-future", "claude-opus-4-8", 1_000_000},
 		// Opus 4.5 以下: 200K（官方規格）
 		{"opus-45", "claude-opus-4-5", 200_000},
 		{"opus-45-dated", "claude-opus-4-5-20251101", 200_000},

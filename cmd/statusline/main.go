@@ -505,22 +505,22 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 }
 
 // contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens）。
-// 依官方 Anthropic 規格：Opus 4.6/4.7、Sonnet 4.6 為 1M；其餘含 Haiku 為 200K。
+// 依官方 Anthropic 規格：minor version >= 6 的 Sonnet/Opus 為 1M；Haiku 及以下版本為 200K。
 // 此函式僅作 fallback；現代 Claude Code 版本會透過 input.ContextWindow 提供精確值。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
 	switch {
 	case strings.Contains(id, "haiku"):
 		return 200_000
-	// Sonnet 4.6+ → 1M；4.5 以下 → 200K
-	case strings.Contains(id, "sonnet-4-6"):
-		return 1_000_000
 	case strings.Contains(id, "sonnet"):
+		if claudeModelMinorVersion(id) >= 6 {
+			return 1_000_000
+		}
 		return 200_000
-	// Opus 4.6/4.7+ → 1M；4.5 以下 → 200K
-	case strings.Contains(id, "opus-4-6"), strings.Contains(id, "opus-4-7"):
-		return 1_000_000
 	case strings.Contains(id, "opus"):
+		if claudeModelMinorVersion(id) >= 6 {
+			return 1_000_000
+		}
 		return 200_000
 	case id != "":
 		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 200K context window fallback\n", modelID)
@@ -528,6 +528,30 @@ func contextWindowForModel(modelID string) int {
 	default:
 		return context.DefaultMaxTokens
 	}
+}
+
+// claudeModelMinorVersion 解析 claude-*-4-X 格式的 minor version 數字。
+// 例如 "claude-sonnet-4-6" → 6，"claude-opus-4-7-20251001" → 7。
+// 解析失敗時回傳 -1（確保 fallback 走保守路徑）。
+func claudeModelMinorVersion(id string) int {
+	const prefix = "-4-"
+	idx := strings.Index(id, prefix)
+	if idx < 0 {
+		return -1
+	}
+	rest := id[idx+len(prefix):]
+	end := 0
+	for end < len(rest) && rest[end] >= '0' && rest[end] <= '9' {
+		end++
+	}
+	if end == 0 {
+		return -1
+	}
+	v, err := strconv.Atoi(rest[:end])
+	if err != nil {
+		return -1
+	}
+	return v
 }
 
 func joinWithSep(parts []string, sep string) string {
