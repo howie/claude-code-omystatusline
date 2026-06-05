@@ -78,3 +78,30 @@ func TestInputRateLimitsParsing(t *testing.T) {
 		t.Errorf("SevenDay.ResetsAt = %d, want 1738857600", got)
 	}
 }
+
+// TestInputSessionNameParsing 驗證 top-level session_name 欄位能正確解析。
+// 此測試對應 #31：優先使用 input.session_name，免去掃描 transcript。
+func TestInputSessionNameParsing(t *testing.T) {
+	raw := `{"session_id":"abc123","session_name":"my-session"}`
+
+	var input Input
+	if err := json.Unmarshal([]byte(raw), &input); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	if input.SessionName != "my-session" {
+		t.Errorf("SessionName = %q, want %q", input.SessionName, "my-session")
+	}
+	if input.SessionID != "abc123" {
+		t.Errorf("SessionID = %q, want %q", input.SessionID, "abc123")
+	}
+
+	// 缺 session_name 時應為空字串（觸發 fallback 到 transcript 掃描）。
+	var empty Input
+	if err := json.Unmarshal([]byte(`{"session_id":"x"}`), &empty); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+	if empty.SessionName != "" {
+		t.Errorf("missing session_name should be empty, got %q", empty.SessionName)
+	}
+}

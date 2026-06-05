@@ -2,8 +2,12 @@ package statusline
 
 // 輸入資料結構 - 支援 Claude Code v2.0.25+ 的新 JSON 格式
 type Input struct {
-	HookEventName  string `json:"hook_event_name,omitempty"` // v2.0.25+ 新增
-	SessionID      string `json:"session_id"`
+	HookEventName string `json:"hook_event_name,omitempty"` // v2.0.25+ 新增
+	SessionID     string `json:"session_id"`
+	// SessionName 為 Claude Code v2.1.x+ 直接提供的 session 名稱（由 /rename 設定）。
+	// 存在時優先使用，免去掃描 transcript（ExtractSessionName）；worktree session 的
+	// metadata-only transcript 也能正確取得。
+	SessionName    string `json:"session_name,omitempty"`
 	TranscriptPath string `json:"transcript_path,omitempty"`
 	Cwd            string `json:"cwd,omitempty"` // v2.0.25+ 新增
 	Model          struct {

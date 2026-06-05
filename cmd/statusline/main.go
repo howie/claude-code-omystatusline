@@ -216,6 +216,13 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// 優先使用 input.SessionName（Claude Code v2.1.x+ 直接提供，零 transcript 掃描，
+			// worktree 的 metadata-only transcript 也有效）。缺此欄位時 fallback 到掃描
+			// transcript（較舊版本 Claude Code）。
+			if input.SessionName != "" {
+				results <- statusline.Result{Type: "session_name", Data: input.SessionName}
+				return
+			}
 			if lines == nil {
 				results <- statusline.Result{Type: "session_name", Data: ""}
 				return
