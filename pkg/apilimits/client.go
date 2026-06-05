@@ -135,6 +135,32 @@ func fetchFromAPI(token string) *APILimitsInfo {
 	return info
 }
 
+// RateLimitWindow 為單一配額窗口（5h 或 7d）的使用量輸入。
+// 用具名欄位的 struct（而非 positional scalar）避免 call site 誤置百分比與重置時間。
+type RateLimitWindow struct {
+	// UsedPercentage 已是 0-100 的百分比（非 OAuth 的 0-1 分數）。
+	UsedPercentage float64
+	// ResetsAtUnix 為重置時間的 Unix epoch 秒（非 OAuth 的 RFC3339 字串）。
+	ResetsAtUnix int64
+}
+
+// FromRateLimits 由 Claude Code 直接提供的 rate_limits 資料建構 APILimitsInfo，
+// 免去向 OAuth usage API 發 HTTP 請求。與 fetchFromAPI 不同：百分比已是 0-100、
+// 重置時間為 Unix epoch 秒（語意見 RateLimitWindow）。
+func FromRateLimits(fiveHour, sevenDay RateLimitWindow) *APILimitsInfo {
+	info := &APILimitsInfo{
+		FiveHourPct:   int(fiveHour.UsedPercentage),
+		SevenDayPct:   int(sevenDay.UsedPercentage),
+		FiveHourReset: formatResetUnix(fiveHour.ResetsAtUnix),
+		SevenDayReset: formatResetUnix(sevenDay.ResetsAtUnix),
+	}
+	if info.FiveHourPct >= 100 || info.SevenDayPct >= 100 {
+		info.LimitReached = true
+	}
+	return info
+}
+
+// formatResetTime 解析 OAuth API 的 RFC3339 重置時間並格式化為剩餘時間。
 func formatResetTime(resetsAt string) string {
 	if resetsAt == "" {
 		return ""
@@ -145,6 +171,19 @@ func formatResetTime(resetsAt string) string {
 		return ""
 	}
 
+	return formatRemaining(t)
+}
+
+// formatResetUnix 將 Unix epoch 秒的重置時間格式化為剩餘時間。
+func formatResetUnix(epoch int64) string {
+	if epoch <= 0 {
+		return ""
+	}
+	return formatRemaining(time.Unix(epoch, 0))
+}
+
+// formatRemaining 將目標時間轉為人類可讀的剩餘時間（如 45m / 2h30m / 3d）。
+func formatRemaining(t time.Time) string {
 	remaining := time.Until(t)
 	if remaining <= 0 {
 		return "now"

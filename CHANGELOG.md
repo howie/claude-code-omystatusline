@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > Targets Claude Code statusline JSON schema **v2.1.90**.
 
+### Added
+- **Read `rate_limits` from input JSON** (#30): Claude Code v2.1.x+ provides API quota
+  usage directly in the statusline input (`rate_limits.five_hour` / `seven_day` with
+  `used_percentage` and `resets_at`). When present, the API limits section now uses this
+  data with zero network latency and works for all auth methods. The OAuth usage-API call
+  (`apilimits.Fetch()`, up to 2s timeout) is kept as a fallback for older Claude Code
+  versions that don't supply `rate_limits`. New `apilimits.FromRateLimits()` builds the
+  display info from the input data (percentages are 0-100, `resets_at` is a Unix epoch).
+
 ### Fixed
 - **Worktree `original_cwd` field name mismatch** (#29): `Input.Worktree` mapped
   `OriginalRepoDir` to the JSON key `original_repo_dir`, but the official statusline
