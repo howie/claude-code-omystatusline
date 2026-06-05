@@ -263,7 +263,19 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			limitsInfo := apilimits.Fetch()
+			// 優先使用 input.RateLimits（Claude Code v2.1.x+ 直接提供，零網路延遲、
+			// 不限驗證方式）。ResetsAt > 0 代表此 feature 存在；否則 fallback 到
+			// OAuth usage API（較舊版本 Claude Code 不提供 rate_limits）。
+			rl := input.RateLimits
+			var limitsInfo *apilimits.APILimitsInfo
+			if rl.FiveHour.ResetsAt > 0 || rl.SevenDay.ResetsAt > 0 {
+				limitsInfo = apilimits.FromRateLimits(
+					rl.FiveHour.UsedPercentage, rl.FiveHour.ResetsAt,
+					rl.SevenDay.UsedPercentage, rl.SevenDay.ResetsAt,
+				)
+			} else {
+				limitsInfo = apilimits.Fetch()
+			}
 			results <- statusline.Result{Type: "api_limits", Data: apilimits.Format(limitsInfo)}
 		}()
 	}

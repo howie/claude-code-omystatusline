@@ -63,6 +63,21 @@ type Input struct {
 		// OriginalBranch 為進入 worktree 前的原始分支（官方 schema 的 "original_branch"）。
 		OriginalBranch string `json:"original_branch,omitempty"`
 	} `json:"worktree,omitempty"`
+	// RateLimits 為 Claude Code v2.1.x+ 直接提供的 API 配額使用量。
+	// 存在時可直接顯示，免去向 OAuth usage API 發 HTTP 請求（見 pkg/apilimits）。
+	// 欄位語意與 OAuth API 不同：UsedPercentage 已是 0-100 的百分比（非 0-1 分數），
+	// ResetsAt 為 Unix epoch 秒（非 RFC3339 字串）。
+	// 判斷是否提供此資料：ResetsAt > 0（feature 存在時一定有重置時間）。
+	RateLimits struct {
+		FiveHour struct {
+			UsedPercentage float64 `json:"used_percentage,omitempty"`
+			ResetsAt       int64   `json:"resets_at,omitempty"`
+		} `json:"five_hour,omitempty"`
+		SevenDay struct {
+			UsedPercentage float64 `json:"used_percentage,omitempty"`
+			ResetsAt       int64   `json:"resets_at,omitempty"`
+		} `json:"seven_day,omitempty"`
+	} `json:"rate_limits,omitempty"`
 }
 
 // 結果通道資料
