@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`apilimits.Fetch()`, up to 2s timeout) is kept as a fallback for older Claude Code
   versions that don't supply `rate_limits`. New `apilimits.FromRateLimits()` builds the
   display info from the input data (percentages are 0-100, `resets_at` is a Unix epoch).
+- **Read `session_name` from input JSON** (#31): Claude Code v2.1.x+ provides the session
+  name (set via `/rename`) as a top-level `session_name` field. The session-name section
+  now prefers it over scanning the transcript (`ExtractSessionName`), removing one
+  transcript scan from the hot path and working correctly for worktree sessions whose
+  transcript is metadata-only. Falls back to transcript parsing when the field is absent.
 
 ### Fixed
 - **Worktree `original_cwd` field name mismatch** (#29): `Input.Worktree` mapped
