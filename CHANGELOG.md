@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+> Targets Claude Code statusline JSON schema **v2.1.90**.
+
+### Fixed
+- **Worktree `original_cwd` field name mismatch** (#29): `Input.Worktree` mapped
+  `OriginalRepoDir` to the JSON key `original_repo_dir`, but the official statusline
+  schema uses `original_cwd`. The field was therefore always empty. Renamed to
+  `OriginalCwd` (`original_cwd`) and added the previously missing
+  `OriginalBranch` (`original_branch`) field.
+- **`pkg/git` test isolation under git hooks**: `TestGetBranch_*` failed when run
+  inside a git hook (e.g. pre-commit) or CI that exports `GIT_DIR` / `GIT_WORK_TREE` /
+  `GIT_INDEX_FILE`. Those variables override `git -C <dir>`, redirecting queries on the
+  temp test repo to the real repo. Added a `TestMain` that unsets inherited `GIT_*`
+  variables before tests run.
+
 ## [2.1.0] - 2026-03-25
 
 ### Added

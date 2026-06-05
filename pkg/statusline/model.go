@@ -52,10 +52,16 @@ type Input struct {
 	AgentID   string `json:"agent_id,omitempty"`
 	AgentType string `json:"agent_type,omitempty"`
 	Worktree  struct {
-		Name            string `json:"name,omitempty"`
-		Path            string `json:"path,omitempty"`
-		Branch          string `json:"branch,omitempty"`
-		OriginalRepoDir string `json:"original_repo_dir,omitempty"`
+		Name string `json:"name,omitempty"`
+		Path string `json:"path,omitempty"`
+		// Branch 為 worktree 目前所在的分支（對應官方 schema 的 "branch"）。
+		Branch string `json:"branch,omitempty"`
+		// OriginalCwd 為進入 worktree 前的原始工作目錄（官方 schema key 為 "original_cwd"）。
+		// 注意：舊版本曾誤用 "original_repo_dir"，但官方 statusline schema 從未提供該 key，
+		// 故 OriginalCwd 在修正前永遠為空字串。
+		OriginalCwd string `json:"original_cwd,omitempty"`
+		// OriginalBranch 為進入 worktree 前的原始分支（官方 schema 的 "original_branch"）。
+		OriginalBranch string `json:"original_branch,omitempty"`
 	} `json:"worktree,omitempty"`
 }
 
