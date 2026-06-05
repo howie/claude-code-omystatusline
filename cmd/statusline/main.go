@@ -270,8 +270,8 @@ func main() {
 			var limitsInfo *apilimits.APILimitsInfo
 			if rl.FiveHour.ResetsAt > 0 || rl.SevenDay.ResetsAt > 0 {
 				limitsInfo = apilimits.FromRateLimits(
-					rl.FiveHour.UsedPercentage, rl.FiveHour.ResetsAt,
-					rl.SevenDay.UsedPercentage, rl.SevenDay.ResetsAt,
+					apilimits.RateLimitWindow{UsedPercentage: rl.FiveHour.UsedPercentage, ResetsAtUnix: rl.FiveHour.ResetsAt},
+					apilimits.RateLimitWindow{UsedPercentage: rl.SevenDay.UsedPercentage, ResetsAtUnix: rl.SevenDay.ResetsAt},
 				)
 			} else {
 				limitsInfo = apilimits.Fetch()

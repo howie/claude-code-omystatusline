@@ -16,7 +16,10 @@ func TestFromRateLimits(t *testing.T) {
 	fiveHourReset := now.Add(2*time.Hour + tinyBuffer).Unix()
 	sevenDayReset := now.Add(48*time.Hour + tinyBuffer).Unix()
 
-	info := FromRateLimits(23.5, fiveHourReset, 41.2, sevenDayReset)
+	info := FromRateLimits(
+		RateLimitWindow{UsedPercentage: 23.5, ResetsAtUnix: fiveHourReset},
+		RateLimitWindow{UsedPercentage: 41.2, ResetsAtUnix: sevenDayReset},
+	)
 	if info == nil {
 		t.Fatal("FromRateLimits returned nil")
 	}
@@ -41,7 +44,10 @@ func TestFromRateLimits(t *testing.T) {
 
 func TestFromRateLimitsLimitReached(t *testing.T) {
 	reset := time.Now().Add(time.Hour + tinyBuffer).Unix()
-	info := FromRateLimits(100, reset, 50, reset)
+	info := FromRateLimits(
+		RateLimitWindow{UsedPercentage: 100, ResetsAtUnix: reset},
+		RateLimitWindow{UsedPercentage: 50, ResetsAtUnix: reset},
+	)
 	if !info.LimitReached {
 		t.Error("LimitReached should be true when a window hits 100%")
 	}
@@ -50,7 +56,10 @@ func TestFromRateLimitsLimitReached(t *testing.T) {
 func TestFromRateLimitsZeroUsage(t *testing.T) {
 	// 0% 使用但有 resets_at：合法狀態（session 剛開始），不應視為缺資料。
 	reset := time.Now().Add(time.Hour + tinyBuffer).Unix()
-	info := FromRateLimits(0, reset, 0, reset)
+	info := FromRateLimits(
+		RateLimitWindow{UsedPercentage: 0, ResetsAtUnix: reset},
+		RateLimitWindow{UsedPercentage: 0, ResetsAtUnix: reset},
+	)
 	if info.FiveHourPct != 0 || info.SevenDayPct != 0 {
 		t.Errorf("expected 0%% usage, got 5h=%d 7d=%d", info.FiveHourPct, info.SevenDayPct)
 	}
@@ -85,7 +94,10 @@ func TestFormatResetUnix(t *testing.T) {
 
 func TestFormatFromRateLimits(t *testing.T) {
 	reset := time.Now().Add(3*time.Hour + tinyBuffer).Unix()
-	info := FromRateLimits(25, reset, 40, reset)
+	info := FromRateLimits(
+		RateLimitWindow{UsedPercentage: 25, ResetsAtUnix: reset},
+		RateLimitWindow{UsedPercentage: 40, ResetsAtUnix: reset},
+	)
 	out := Format(info)
 
 	for _, want := range []string{"5h: 25%", "7d: 40%"} {
