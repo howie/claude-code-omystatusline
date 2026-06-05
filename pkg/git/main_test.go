@@ -2,6 +2,7 @@ package git
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -12,17 +13,15 @@ import (
 // 這些變數的優先級高於 `git -C <dir>`，導致 GetBranch 對臨時測試 repo 的查詢
 // 被重導到真實 repo，回傳錯誤的分支名（測試會看到當前工作分支而非 test-branch）。
 //
-// 在所有測試開始前清掉這些變數，可讓 `git -C <tmpDir>` 真正作用於 tmpDir。
+// 在所有測試開始前清掉所有 GIT_* 變數，可讓 `git -C <tmpDir>` 真正作用於 tmpDir。
+// 用前綴比對（而非固定清單）以涵蓋任何會影響 repo discovery 的 GIT_* 變數，
+// 與 branch_test.go 的 runGitCommand 過濾子行程環境的方式保持一致。
 func TestMain(m *testing.M) {
-	for _, key := range []string{
-		"GIT_DIR",
-		"GIT_WORK_TREE",
-		"GIT_INDEX_FILE",
-		"GIT_COMMON_DIR",
-		"GIT_OBJECT_DIRECTORY",
-		"GIT_PREFIX",
-	} {
-		_ = os.Unsetenv(key)
+	for _, env := range os.Environ() {
+		key, _, _ := strings.Cut(env, "=")
+		if strings.HasPrefix(key, "GIT_") {
+			_ = os.Unsetenv(key)
+		}
 	}
 	os.Exit(m.Run())
 }
