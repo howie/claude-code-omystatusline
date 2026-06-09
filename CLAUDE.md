@@ -101,7 +101,7 @@ Formatted status line output to stdout
 - Analyzes transcript to estimate token count
 - `AnalyzeDetailedFromLines(lines, maxTokens)` - returns `ContextData` with bar, info, percentage
 - `InferModelFromLines(lines)` - reads `message.model` from last usage entry; used for mixed-model sessions
-- `maxTokens` (denominator) source of truth priority: transcript `message.model` → `input.Model.ID` → `STATUSLINE_MAX_TOKENS` env var
+- `maxTokens` (denominator) source of truth: transcript `message.model` → `input.Model.ID` → `contextWindowForModel()`; `STATUSLINE_MAX_TOKENS` env var is an **unconditional override** (not a fallback — it overrides after model inference)
   - **`input.ContextWindow.ContextWindowSize` is NOT used as denominator** — Claude Code sends the current token count there, not the model's max capacity; using it as denominator causes ~100% always
   - Token count (numerator) uses `input.ContextWindow.CurrentUsage` when available (more accurate than transcript); falls back to transcript parsing
 - Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`; **official Anthropic specs**):

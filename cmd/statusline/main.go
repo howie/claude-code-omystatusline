@@ -58,6 +58,8 @@ func main() {
 	// hasContextWindow controls whether CurrentUsage (more accurate) or transcript parsing is
 	// used for the token count numerator. It does NOT affect maxTokens.
 	hasContextWindow := input.ContextWindow.ContextWindowSize > 0
+	// Always prefer transcript-inferred model for consistent denominator in mixed-model sessions
+	// (e.g. Plan mode uses Opus, Edit uses Sonnet — the last-used model determines the window size).
 	effectiveModelID := context.InferModelFromLines(lines)
 	if effectiveModelID == "" {
 		effectiveModelID = input.Model.ID
@@ -92,10 +94,7 @@ func main() {
 			// tokens==0 時顯示 0%（而非 📡）：代表 session 尚未完成第一次 API call，
 			// 不是「無法取得資料」，與 metadata-only transcript 情境語意不同。
 			if hasContextWindow {
-				u := input.ContextWindow.CurrentUsage
-				// output tokens 不計入：context window 壓力由 input+cache 決定，
-				// 與 usageFromLines 的計算方式一致（見 tracker.go）。
-				tokens := u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
+				tokens := contextTokensFromUsage(input.ContextWindow.CurrentUsage)
 				results <- statusline.Result{Type: "context", Data: context.BuildFromTokens(tokens, maxTokens)}
 				return
 			}
@@ -516,7 +515,7 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 
 // contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens）。
 // 依官方 Anthropic 規格：Sonnet/Opus major >= 5，或 major == 4 且 minor >= 6 時為 1M；其餘為 200K。
-// 此函式僅作 fallback；現代 Claude Code 版本會透過 input.ContextWindow 提供精確值。
+// 此函式永遠是百分比的分母（denominator）；ContextWindowSize 不可用作分母（見 hasContextWindow 上方注解）。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
 	switch {
@@ -567,6 +566,14 @@ func claudeModelVersion(id string) (int, int) {
 		}
 	}
 	return -1, -1
+}
+
+// contextTokensFromUsage sums the input-side tokens from a ContextUsage value.
+// OutputTokens is intentionally excluded: context window pressure is driven by
+// input+cache tokens; output tokens extend from the same window but don't
+// independently occupy context space (mirrors usageFromLines in tracker.go).
+func contextTokensFromUsage(u statusline.ContextUsage) int {
+	return u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
 }
 
 func joinWithSep(parts []string, sep string) string {

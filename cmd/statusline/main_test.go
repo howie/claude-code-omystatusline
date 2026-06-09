@@ -112,6 +112,48 @@ func TestContextWindowMaxTokens(t *testing.T) {
 	})
 }
 
+// TestContextTokensFromUsage verifies the summation helper: input+cache is included,
+// OutputTokens is explicitly excluded regardless of value.
+func TestContextTokensFromUsage(t *testing.T) {
+	cases := []struct {
+		name                 string
+		u                    statusline.ContextUsage
+		want                 int
+	}{
+		{
+			name: "sums input and both cache fields",
+			u: statusline.ContextUsage{
+				InputTokens:              1000,
+				CacheCreationInputTokens: 500,
+				CacheReadInputTokens:     200,
+				OutputTokens:             999, // must be excluded
+			},
+			want: 1700,
+		},
+		{
+			name: "output tokens excluded even when large",
+			u: statusline.ContextUsage{
+				InputTokens:  100,
+				OutputTokens: 1_000_000, // large output must not inflate result
+			},
+			want: 100,
+		},
+		{
+			name: "zero usage",
+			u:    statusline.ContextUsage{},
+			want: 0,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := contextTokensFromUsage(tc.u)
+			if got != tc.want {
+				t.Errorf("contextTokensFromUsage() = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestClaudeModelVersion(t *testing.T) {
 	cases := []struct {
 		id        string

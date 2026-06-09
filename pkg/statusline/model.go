@@ -42,15 +42,7 @@ type Input struct {
 		// Use only to detect whether Claude Code provides CurrentUsage data (> 0 means yes).
 		// Never use as the percentage denominator; use contextWindowForModel() instead.
 		ContextWindowSize int `json:"context_window_size,omitempty"`
-		CurrentUsage      struct {
-			InputTokens int `json:"input_tokens,omitempty"`
-			// OutputTokens 已解析但不計入 context 使用量：
-			// context window 壓力由 input+cache tokens 決定；output tokens 延伸自同一 window，
-			// 不單獨占用 context 空間。與 tracker.go usageFromLines 的計算方式一致。
-			OutputTokens             int `json:"output_tokens,omitempty"`
-			CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
-			CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
-		} `json:"current_usage,omitempty"`
+		CurrentUsage ContextUsage `json:"current_usage,omitempty"`
 		// UsedPercentage / RemainingPercentage：由 Claude Code 計算，僅供參考。
 		// 進度條使用 BuildFromTokens 自行計算，保持與 bar 渲染邏輯一致。
 		UsedPercentage      int `json:"used_percentage,omitempty"`
@@ -85,6 +77,17 @@ type Input struct {
 			ResetsAt       int64   `json:"resets_at,omitempty"`
 		} `json:"seven_day,omitempty"`
 	} `json:"rate_limits,omitempty"`
+}
+
+// ContextUsage holds per-API-call token counts from Claude Code's context_window.current_usage.
+// OutputTokens is parsed but intentionally excluded from context pressure calculations:
+// context window pressure is determined by input+cache tokens; output tokens extend from the
+// same window but don't independently consume context space (consistent with usageFromLines in tracker.go).
+type ContextUsage struct {
+	InputTokens              int `json:"input_tokens,omitempty"`
+	OutputTokens             int `json:"output_tokens,omitempty"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
 }
 
 // 結果通道資料
