@@ -101,8 +101,10 @@ Formatted status line output to stdout
 - Analyzes transcript to estimate token count
 - `AnalyzeDetailedFromLines(lines, maxTokens)` - returns `ContextData` with bar, info, percentage
 - `InferModelFromLines(lines)` - reads `message.model` from last usage entry; used for mixed-model sessions
-- `maxTokens` source of truth priority: transcript `message.model` → `input.Model.ID` → `STATUSLINE_MAX_TOKENS` env var
-- Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`; **official Anthropic specs**, fallback only):
+- `maxTokens` (denominator) source of truth priority: transcript `message.model` → `input.Model.ID` → `STATUSLINE_MAX_TOKENS` env var
+  - **`input.ContextWindow.ContextWindowSize` is NOT used as denominator** — Claude Code sends the current token count there, not the model's max capacity; using it as denominator causes ~100% always
+  - Token count (numerator) uses `input.ContextWindow.CurrentUsage` when available (more accurate than transcript); falls back to transcript parsing
+- Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`; **official Anthropic specs**):
   - Haiku: 200K | Sonnet/Opus major ≥ 5 OR (major==4 AND minor ≥ 6): 1M | others: 200K | unknown non-empty: 200K | empty: `DefaultMaxTokens`
   - Version parsed via `claudeModelVersion()`: scans from end for two consecutive small integers (< 100), ignores date suffixes
 - Generates visual progress bar (██████░░░░ format)

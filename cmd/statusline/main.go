@@ -25,10 +25,7 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
-const (
-	maxTokensSourceContextWindow  = "ContextWindow"
-	maxTokensSourceModelInference = "model-inference"
-)
+const maxTokensSourceModelInference = "model-inference"
 
 func main() {
 	var input statusline.Input
@@ -52,27 +49,21 @@ func main() {
 		fmt.Fprintf(os.Stderr, "statusline: failed to read transcript %q: %v\n", input.TranscriptPath, err)
 	}
 
-	// 決定 context window 大小與 maxTokens（優先級由高到低）：
-	// 1. input.ContextWindow.ContextWindowSize（Claude Code 直接提供，最準確，worktree 也有效）
-	// 2. transcript 最後一筆 usage 的 message.model → contextWindowForModel()
-	// 3. fallback 到 input.Model.ID → contextWindowForModel()
-	// 4. STATUSLINE_MAX_TOKENS 環境變數可覆寫（effectiveModelID 保留供 debug 輸出）
+	// 決定 maxTokens（分母）與 token 數（分子）。
+	//
+	// ContextWindowSize from Claude Code is the current token count occupying the context window,
+	// NOT the model's max capacity. Using it as the denominator causes percentage ≈ 100% always.
+	// Always derive maxTokens from the model ID (theoretical max: 1M for Sonnet/Opus 4.6+).
+	//
+	// hasContextWindow controls whether CurrentUsage (more accurate) or transcript parsing is
+	// used for the token count numerator. It does NOT affect maxTokens.
 	hasContextWindow := input.ContextWindow.ContextWindowSize > 0
-	var effectiveModelID string
-	var maxTokens int
-	var maxTokensSource string
-	if hasContextWindow {
-		maxTokens = input.ContextWindow.ContextWindowSize
-		maxTokensSource = maxTokensSourceContextWindow
+	effectiveModelID := context.InferModelFromLines(lines)
+	if effectiveModelID == "" {
 		effectiveModelID = input.Model.ID
-	} else {
-		effectiveModelID = context.InferModelFromLines(lines)
-		if effectiveModelID == "" {
-			effectiveModelID = input.Model.ID
-		}
-		maxTokens = contextWindowForModel(effectiveModelID)
-		maxTokensSource = maxTokensSourceModelInference
 	}
+	maxTokens := contextWindowForModel(effectiveModelID)
+	maxTokensSource := maxTokensSourceModelInference
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
 		switch {

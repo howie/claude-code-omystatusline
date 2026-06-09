@@ -37,7 +37,10 @@ type Input struct {
 		// TotalInputTokens / TotalOutputTokens：整個 session 的累計量，僅供參考，不用於進度條。
 		TotalInputTokens  int `json:"total_input_tokens,omitempty"`
 		TotalOutputTokens int `json:"total_output_tokens,omitempty"`
-		// ContextWindowSize 為此 session 實際使用的 context window 大小（非理論最大值）。
+		// ContextWindowSize is the current token count in the context window sent by Claude Code.
+		// This is NOT the model's maximum capacity (e.g. 1M for Sonnet 4.6).
+		// Use only to detect whether Claude Code provides CurrentUsage data (> 0 means yes).
+		// Never use as the percentage denominator; use contextWindowForModel() instead.
 		ContextWindowSize int `json:"context_window_size,omitempty"`
 		CurrentUsage      struct {
 			InputTokens int `json:"input_tokens,omitempty"`

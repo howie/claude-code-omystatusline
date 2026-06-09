@@ -22,6 +22,7 @@ func TestFromRateLimits(t *testing.T) {
 	)
 	if info == nil {
 		t.Fatal("FromRateLimits returned nil")
+		return
 	}
 
 	// used_percentage 已是 0-100，直接取整數（不像 OAuth 的 0-1 需 ×100）。

@@ -48,31 +48,36 @@ func TestFormatSegments(t *testing.T) {
 	})
 }
 
-// TestContextWindowMaxTokens 驗證 maxTokens 優先順序：
-// ContextWindowSize > 0 時優先使用，否則 fallback 到 contextWindowForModel。
+// TestContextWindowMaxTokens 驗證 maxTokens 永遠使用 contextWindowForModel（非 ContextWindowSize）。
+// ContextWindowSize from Claude Code is the current token count, not the model's max capacity.
+// Using it as the denominator causes percentage ≈ 100% for all sessions (the bug this fixes).
 func TestContextWindowMaxTokens(t *testing.T) {
 	orig := context.RenderMode
 	context.RenderMode = terminal.ModeTrueColor
 	defer func() { context.RenderMode = orig }()
 
-	t.Run("ContextWindowSize>0 takes priority over model inference", func(t *testing.T) {
-		// 93545 tokens / 500000 window = 18%
-		tokens := 1 + 694 + 92850
-		ctxData := context.BuildFromTokens(tokens, 500_000)
+	t.Run("contextWindowForModel is the denominator for sonnet-4-6", func(t *testing.T) {
+		// Bug scenario: ContextWindowSize (207k) equals token usage → old code showed 100%.
+		// New code always uses contextWindowForModel (1M) → ~20%.
+		tokens := 207_000
+		maxTokens := contextWindowForModel("claude-sonnet-4-6") // must be 1_000_000
+		ctxData := context.BuildFromTokens(tokens, maxTokens)
 		if ctxData.NoUsageData {
-			t.Error("ContextWindow path must not set NoUsageData")
+			t.Error("BuildFromTokens must not set NoUsageData")
 		}
 		if ctxData.Tokens != tokens {
 			t.Errorf("Tokens = %d, want %d", ctxData.Tokens, tokens)
 		}
-		wantPct := tokens * 100 / 500_000
+		wantPct := tokens * 100 / 1_000_000 // ~20, not 100
 		if ctxData.Percentage != wantPct {
-			t.Errorf("Percentage = %d, want %d", ctxData.Percentage, wantPct)
+			t.Errorf("Percentage = %d, want %d (bug: ContextWindowSize as denominator gives 100%%)", ctxData.Percentage, wantPct)
+		}
+		if ctxData.Percentage == 100 {
+			t.Error("Percentage must not be 100 when tokens=207k and model max=1M (regression: ContextWindowSize bug)")
 		}
 	})
 
-	t.Run("zero ContextWindowSize falls back to model inference", func(t *testing.T) {
-		// ContextWindowSize==0 → contextWindowForModel used; verify the function exists
+	t.Run("contextWindowForModel returns 1M for sonnet-4-6", func(t *testing.T) {
 		got := contextWindowForModel("claude-sonnet-4-6")
 		if got != 1_000_000 {
 			t.Errorf("contextWindowForModel(sonnet-4-6) = %d, want 1000000", got)
