@@ -154,6 +154,42 @@ func TestContextTokensFromUsage(t *testing.T) {
 	}
 }
 
+// TestResolveMaxTokens 驗證分母決策鏈的三層優先順序：
+// model inference → input.Model.ID 的 [1m] 標記 → STATUSLINE_MAX_TOKENS env（無條件最終 override）。
+// regression anchor：transcript 推斷的 model 不帶 [1m] 後綴，只靠推斷會把 1M beta session 低估為 200K。
+func TestResolveMaxTokens(t *testing.T) {
+	cases := []struct {
+		name       string
+		effective  string
+		inputID    string
+		envMax     string
+		want       int
+		wantSource string
+	}{
+		// [1m] 標記覆蓋 transcript 推斷（核心 regression 情境）
+		{"input-1m-overrides-inference", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "", 1_000_000, maxTokensSourceInput1MMarker},
+		{"input-1m-uppercase", "claude-sonnet-4-5", "claude-sonnet-4-5[1M]", "", 1_000_000, maxTokensSourceInput1MMarker},
+		// 無標記：走家族/版本推斷
+		{"plain-inference-200k", "claude-sonnet-4-5", "claude-sonnet-4-5", "", 200_000, maxTokensSourceModelInference},
+		{"plain-inference-fable-1m", "claude-fable-5", "", "", 1_000_000, maxTokensSourceModelInference},
+		// env var 無條件覆蓋 [1m] 標記（CLAUDE.md 文件化語意）
+		{"env-overrides-1m-marker", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "300000", 300_000, maxTokensSourceEnvOverride},
+		{"env-overrides-inference", "claude-sonnet-4-6", "", "500000", 500_000, maxTokensSourceEnvOverride},
+		// 無效 env：退回前一層來源
+		{"invalid-env-keeps-1m-marker", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "abc", 1_000_000, maxTokensSourceInput1MMarker},
+		{"non-positive-env-keeps-inference", "claude-sonnet-4-6", "claude-sonnet-4-6", "0", 1_000_000, maxTokensSourceModelInference},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, source := resolveMaxTokens(tc.effective, tc.inputID, tc.envMax)
+			if got != tc.want || source != tc.wantSource {
+				t.Errorf("resolveMaxTokens(%q, %q, %q) = (%d, %q), want (%d, %q)",
+					tc.effective, tc.inputID, tc.envMax, got, source, tc.want, tc.wantSource)
+			}
+		})
+	}
+}
+
 func TestClaudeModelVersion(t *testing.T) {
 	cases := []struct {
 		id        string
@@ -222,7 +258,9 @@ func TestContextWindowForModel(t *testing.T) {
 		// "[1m]" 標記：Claude Code 對 1M context session 的明確標記，優先於家族/版本推斷
 		{"fable-5-1m-marker", "claude-fable-5[1m]", 1_000_000},
 		{"sonnet-45-1m-marker", "claude-sonnet-4-5[1m]", 1_000_000},
-		// 未知非空模型：保守 fallback 200K
+		// 未知非空模型：版本規則仍適用（major >= 5 → 1M），其餘保守 fallback 200K
+		{"unknown-family-major5", "claude-nova-5", 1_000_000},
+		{"unknown-family-major4-minor6", "claude-nova-4-6", 1_000_000},
 		{"unknown-future", "claude-future-1", 200_000},
 		// 空字串：DefaultMaxTokens
 		{"empty-fallback", "", context.DefaultMaxTokens},
