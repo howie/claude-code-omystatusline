@@ -55,3 +55,6 @@ tmp/
 output/
 .pr-review/
 .antigravitycli/
+.runtime/
+.specify/scripts/
+.specify/templates/
