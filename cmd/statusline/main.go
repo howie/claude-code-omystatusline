@@ -65,6 +65,11 @@ func main() {
 		effectiveModelID = input.Model.ID
 	}
 	maxTokens := contextWindowForModel(effectiveModelID)
+	// transcript 內的 message.model 不帶 "[1m]" 後綴，推斷結果可能低估分母；
+	// input.Model.ID 帶 1M 標記時直接採信（session 層級的 context window 是 1M）。
+	if strings.Contains(strings.ToLower(input.Model.ID), "[1m]") {
+		maxTokens = 1_000_000
+	}
 	maxTokensSource := maxTokensSourceModelInference
 	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
 		v, err := strconv.Atoi(envMax)
@@ -514,19 +519,19 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 }
 
 // contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens）。
-// 依官方 Anthropic 規格：Sonnet/Opus major >= 5，或 major == 4 且 minor >= 6 時為 1M；其餘為 200K。
+// 依官方 Anthropic 規格：Sonnet/Opus/Fable major >= 5，或 major == 4 且 minor >= 6 時為 1M；其餘為 200K。
 // 此函式永遠是百分比的分母（denominator）；ContextWindowSize 不可用作分母（見 hasContextWindow 上方注解）。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
+	// "[1m]" 是 Claude Code 對 1M context session 的明確標記（如 claude-fable-5[1m]），
+	// 比家族/版本推斷更可靠，優先採信。
+	if strings.Contains(id, "[1m]") {
+		return 1_000_000
+	}
 	switch {
 	case strings.Contains(id, "haiku"):
 		return 200_000 // Haiku 從未超過 200K；如有更大版本請重新評估
-	case strings.Contains(id, "sonnet"):
-		if claudeModelIs1M(id) {
-			return 1_000_000
-		}
-		return 200_000
-	case strings.Contains(id, "opus"):
+	case strings.Contains(id, "sonnet"), strings.Contains(id, "opus"), strings.Contains(id, "fable"):
 		if claudeModelIs1M(id) {
 			return 1_000_000
 		}
@@ -551,7 +556,8 @@ func claudeModelIs1M(id string) bool {
 
 // claudeModelVersion 從 claude-*-{major}-{minor}[-date] 格式解析 (major, minor)。
 // 從 ID 末端向前掃描，找最後兩個連續的小整數 token（< 100，避免誤認 date suffix）。
-// 解析失敗時回傳 (-1, -1)。
+// 找不到兩個連續整數時，fallback 到最後一個單獨的小整數，視為 {major}.0
+// （如 claude-fable-5 → (5, 0)）。完全解析失敗時回傳 (-1, -1)。
 func claudeModelVersion(id string) (int, int) {
 	parts := strings.Split(id, "-")
 	for i := len(parts) - 1; i >= 1; i-- {
@@ -563,6 +569,13 @@ func claudeModelVersion(id string) (int, int) {
 		// 限制在合理版本範圍內（排除 date suffix 如 20250514）
 		if major > 0 && major < 100 && minor >= 0 && minor < 100 {
 			return major, minor
+		}
+	}
+	// 單版本號模型（無 minor）：取末端最後一個合理範圍的整數當 major
+	for i := len(parts) - 1; i >= 0; i-- {
+		major, err := strconv.Atoi(parts[i])
+		if err == nil && major > 0 && major < 100 {
+			return major, 0
 		}
 	}
 	return -1, -1

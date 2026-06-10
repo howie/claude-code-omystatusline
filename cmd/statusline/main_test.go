@@ -116,9 +116,9 @@ func TestContextWindowMaxTokens(t *testing.T) {
 // OutputTokens is explicitly excluded regardless of value.
 func TestContextTokensFromUsage(t *testing.T) {
 	cases := []struct {
-		name                 string
-		u                    statusline.ContextUsage
-		want                 int
+		name string
+		u    statusline.ContextUsage
+		want int
 	}{
 		{
 			name: "sums input and both cache fields",
@@ -166,12 +166,13 @@ func TestClaudeModelVersion(t *testing.T) {
 		{"claude-sonnet-5-0", 5, 0},
 		{"claude-opus-4-1-20250805", 4, 1},
 		{"claude-haiku-4-5", 4, 5},
-		// date-only format (no minor) → not parseable as valid version
-		{"claude-sonnet-4-20250514", -1, -1},
-		// trailing prefix, no digit
-		{"claude-sonnet-4-", -1, -1},
-		// unknown format
-		{"claude-future-1", -1, -1},
+		// 單版本號（無 minor）→ fallback 視為 {major}.0
+		{"claude-fable-5", 5, 0},
+		{"claude-sonnet-4-20250514", 4, 0},
+		{"claude-sonnet-4-", 4, 0},
+		{"claude-future-1", 1, 0},
+		// 完全無合理整數 → 不可解析
+		{"claude-sonnet-20250514", -1, -1},
 		{"", -1, -1},
 		{"sonnet-4-10", 4, 10},
 	}
@@ -214,6 +215,13 @@ func TestContextWindowForModel(t *testing.T) {
 		{"opus-45", "claude-opus-4-5", 200_000},
 		{"opus-45-dated", "claude-opus-4-5-20251101", 200_000},
 		{"opus-41", "claude-opus-4-1-20250805", 200_000},
+		// Fable 5+：major >= 5 → 1M（regression: 卡 100% 的根因，transcript model 為 claude-fable-5）
+		{"fable-5", "claude-fable-5", 1_000_000},
+		{"fable-5-dated", "claude-fable-5-20260101", 1_000_000},
+		{"fable-uppercase", "Claude-Fable-5", 1_000_000},
+		// "[1m]" 標記：Claude Code 對 1M context session 的明確標記，優先於家族/版本推斷
+		{"fable-5-1m-marker", "claude-fable-5[1m]", 1_000_000},
+		{"sonnet-45-1m-marker", "claude-sonnet-4-5[1m]", 1_000_000},
 		// 未知非空模型：保守 fallback 200K
 		{"unknown-future", "claude-future-1", 200_000},
 		// 空字串：DefaultMaxTokens
