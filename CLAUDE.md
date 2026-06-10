@@ -101,12 +101,17 @@ Formatted status line output to stdout
 - Analyzes transcript to estimate token count
 - `AnalyzeDetailedFromLines(lines, maxTokens)` - returns `ContextData` with bar, info, percentage
 - `InferModelFromLines(lines)` - reads `message.model` from last usage entry; used for mixed-model sessions
-- `maxTokens` (denominator) source of truth: transcript `message.model` → `input.Model.ID` → `contextWindowForModel()`; `STATUSLINE_MAX_TOKENS` env var is an **unconditional override** (not a fallback — it overrides after model inference)
+- `maxTokens` (denominator) resolution chain (`resolveMaxTokens()`, `cmd/statusline/main.go`; later layers override earlier):
+  1. Model inference: transcript `message.model` (preferred for mixed-model sessions) → `input.Model.ID` fallback → `contextWindowForModel()`
+  2. `[1m]` marker on `input.Model.ID` forces 1M — transcript model IDs never carry the suffix, so inference alone underestimates 1M-beta sessions
+  3. `STATUSLINE_MAX_TOKENS` env var is the **unconditional final override**
   - **`input.ContextWindow.ContextWindowSize` is NOT used as denominator** — Claude Code sends the current token count there, not the model's max capacity; using it as denominator causes ~100% always
   - Token count (numerator) uses `input.ContextWindow.CurrentUsage` when available (more accurate than transcript); falls back to transcript parsing
 - Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`; **official Anthropic specs**):
-  - Haiku: 200K | Sonnet/Opus major ≥ 5 OR (major==4 AND minor ≥ 6): 1M | others: 200K | unknown non-empty: 200K | empty: `DefaultMaxTokens`
-  - Version parsed via `claudeModelVersion()`: scans from end for two consecutive small integers (< 100), ignores date suffixes
+  - ID containing `[1m]`: 1M (takes precedence over family/version rules)
+  - Haiku: 200K | Sonnet/Opus/Fable major ≥ 5 OR (major==4 AND minor ≥ 6): 1M | others: 200K
+  - Unknown non-empty families apply the same version rule (major ≥ 5 → 1M); otherwise 200K with a stderr warning | empty: `DefaultMaxTokens`
+  - Version parsed via `claudeModelVersion()`: scans from end for two consecutive small integers (< 100), ignores date suffixes; single-version IDs (e.g. `claude-fable-5`) fall back to `{major}.0`
 - Generates visual progress bar (██████░░░░ format)
 - Color-coded warnings: green (<60%), gold (60-80%), red (≥80%)
 

@@ -41,8 +41,8 @@ type Input struct {
 		// This is NOT the model's maximum capacity (e.g. 1M for Sonnet 4.6).
 		// Use only to detect whether Claude Code provides CurrentUsage data (> 0 means yes).
 		// Never use as the percentage denominator; use contextWindowForModel() instead.
-		ContextWindowSize int `json:"context_window_size,omitempty"`
-		CurrentUsage ContextUsage `json:"current_usage,omitempty"`
+		ContextWindowSize int          `json:"context_window_size,omitempty"`
+		CurrentUsage      ContextUsage `json:"current_usage,omitempty"`
 		// UsedPercentage / RemainingPercentage：由 Claude Code 計算，僅供參考。
 		// 進度條使用 BuildFromTokens 自行計算，保持與 bar 渲染邏輯一致。
 		UsedPercentage      int `json:"used_percentage,omitempty"`

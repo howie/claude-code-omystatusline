@@ -25,7 +25,18 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/transcript"
 )
 
-const maxTokensSourceModelInference = "model-inference"
+// maxTokens 來源標籤（STATUSLINE_DEBUG 輸出用），對應 resolveMaxTokens 的三層優先順序。
+const (
+	maxTokensSourceModelInference = "model-inference"
+	maxTokensSourceInput1MMarker  = "input-1m-marker"
+	maxTokensSourceEnvOverride    = "env-override"
+)
+
+// context window 容量（官方 Anthropic 規格）。
+const (
+	contextWindow1M   = 1_000_000
+	contextWindow200K = 200_000
+)
 
 func main() {
 	var input statusline.Input
@@ -64,19 +75,7 @@ func main() {
 	if effectiveModelID == "" {
 		effectiveModelID = input.Model.ID
 	}
-	maxTokens := contextWindowForModel(effectiveModelID)
-	maxTokensSource := maxTokensSourceModelInference
-	if envMax := os.Getenv("STATUSLINE_MAX_TOKENS"); envMax != "" {
-		v, err := strconv.Atoi(envMax)
-		switch {
-		case err != nil:
-			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%q is not a valid integer, using model default\n", envMax)
-		case v <= 0:
-			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%d must be > 0, using model default\n", v)
-		default:
-			maxTokens = v
-		}
-	}
+	maxTokens, maxTokensSource := resolveMaxTokens(effectiveModelID, input.Model.ID, os.Getenv("STATUSLINE_MAX_TOKENS"))
 
 	// Phase 3: 並行處理所有資料收集
 	results := make(chan statusline.Result, 14)
@@ -513,27 +512,63 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 	}
 }
 
+// resolveMaxTokens 決定 context 百分比的分母與其來源標籤（STATUSLINE_DEBUG 用）。
+// 優先順序（後者覆蓋前者）：
+//  1. effectiveModelID（transcript 推斷優先）的家族/版本推斷
+//  2. inputModelID 的 "[1m]" 標記 — transcript 的 message.model 從不帶此後綴，
+//     1M beta session 只靠推斷會低估分母。刻意取捨：mixed-model session（input 為
+//     sonnet[1m] 但 transcript 最後是 opus 200K）以 session 主模型的 1M 為準。
+//  3. STATUSLINE_MAX_TOKENS env var — 文件化的無條件 override。
+func resolveMaxTokens(effectiveModelID, inputModelID, envMax string) (int, string) {
+	maxTokens := contextWindowForModel(effectiveModelID)
+	source := maxTokensSourceModelInference
+	if strings.Contains(strings.ToLower(inputModelID), "[1m]") {
+		maxTokens = contextWindow1M
+		source = maxTokensSourceInput1MMarker
+	}
+	if envMax != "" {
+		v, err := strconv.Atoi(envMax)
+		switch {
+		case err != nil:
+			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%q is not a valid integer, using model default\n", envMax)
+		case v <= 0:
+			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_MAX_TOKENS=%d must be > 0, using model default\n", v)
+		default:
+			maxTokens = v
+			source = maxTokensSourceEnvOverride
+		}
+	}
+	return maxTokens, source
+}
+
 // contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens）。
-// 依官方 Anthropic 規格：Sonnet/Opus major >= 5，或 major == 4 且 minor >= 6 時為 1M；其餘為 200K。
+// ID 含 "[1m]" 標記時無條件回傳 1M（優先於下列家族/版本規則）。
+// 依官方 Anthropic 規格：Sonnet/Opus/Fable major >= 5，或 major == 4 且 minor >= 6 時為 1M；其餘為 200K。
+// 未知家族亦套用相同版本規則，避免下一個新家族重演 fable 落入 200K fallback 的 regression。
 // 此函式永遠是百分比的分母（denominator）；ContextWindowSize 不可用作分母（見 hasContextWindow 上方注解）。
 func contextWindowForModel(modelID string) int {
 	id := strings.ToLower(modelID)
+	// "[1m]" 是 Claude Code 對 1M context session 的明確標記（如 claude-fable-5[1m]），
+	// 比家族/版本推斷更可靠，優先採信。
+	if strings.Contains(id, "[1m]") {
+		return contextWindow1M
+	}
 	switch {
 	case strings.Contains(id, "haiku"):
-		return 200_000 // Haiku 從未超過 200K；如有更大版本請重新評估
-	case strings.Contains(id, "sonnet"):
+		return contextWindow200K // Haiku 從未超過 200K；如有更大版本請重新評估
+	case strings.Contains(id, "sonnet"), strings.Contains(id, "opus"), strings.Contains(id, "fable"):
 		if claudeModelIs1M(id) {
-			return 1_000_000
+			return contextWindow1M
 		}
-		return 200_000
-	case strings.Contains(id, "opus"):
-		if claudeModelIs1M(id) {
-			return 1_000_000
-		}
-		return 200_000
+		return contextWindow200K
 	case id != "":
+		// 未知家族也套用版本規則：major >= 5 的新家族（如未來的 claude-nova-5）
+		// 視為 1M，不再無條件 200K。
+		if claudeModelIs1M(id) {
+			return contextWindow1M
+		}
 		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 200K context window fallback\n", modelID)
-		return 200_000
+		return contextWindow200K
 	default:
 		return context.DefaultMaxTokens
 	}
@@ -551,7 +586,8 @@ func claudeModelIs1M(id string) bool {
 
 // claudeModelVersion 從 claude-*-{major}-{minor}[-date] 格式解析 (major, minor)。
 // 從 ID 末端向前掃描，找最後兩個連續的小整數 token（< 100，避免誤認 date suffix）。
-// 解析失敗時回傳 (-1, -1)。
+// 找不到兩個連續整數時，fallback 到最後一個單獨的小整數，視為 {major}.0
+// （如 claude-fable-5 → (5, 0)）。完全解析失敗時回傳 (-1, -1)。
 func claudeModelVersion(id string) (int, int) {
 	parts := strings.Split(id, "-")
 	for i := len(parts) - 1; i >= 1; i-- {
@@ -563,6 +599,13 @@ func claudeModelVersion(id string) (int, int) {
 		// 限制在合理版本範圍內（排除 date suffix 如 20250514）
 		if major > 0 && major < 100 && minor >= 0 && minor < 100 {
 			return major, minor
+		}
+	}
+	// 單版本號模型（無 minor）：取末端最後一個合理範圍的整數當 major
+	for i := len(parts) - 1; i >= 0; i-- {
+		major, err := strconv.Atoi(parts[i])
+		if err == nil && major > 0 && major < 100 {
+			return major, 0
 		}
 	}
 	return -1, -1
