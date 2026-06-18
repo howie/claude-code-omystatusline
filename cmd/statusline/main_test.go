@@ -189,6 +189,17 @@ func TestPRURL(t *testing.T) {
 			t.Errorf("prURL = %q, want empty", got)
 		}
 	})
+
+	t.Run("empty for non-github host (avoid broken link)", func(t *testing.T) {
+		var in statusline.Input
+		in.PR.Number = 42
+		in.Workspace.Repo.Host = "gitlab.com" // GitLab 用 /merge_requests/，不可套 /pull/
+		in.Workspace.Repo.Owner = "o"
+		in.Workspace.Repo.Name = "r"
+		if got := prURL(in); got != "" {
+			t.Errorf("prURL for gitlab host = %q, want empty (no broken /pull/ link)", got)
+		}
+	})
 }
 
 // TestContextWindowFromInput 驗證 allow-set 護欄：context_window_size 只在等於已知容量
@@ -201,8 +212,8 @@ func TestContextWindowFromInput(t *testing.T) {
 		wantSize int
 		wantOK   bool
 	}{
-		{"trusts-200k", 200_000, 200_000, true},
-		{"trusts-1m", 1_000_000, 1_000_000, true},
+		{"trusts-200k", contextWindow200K, contextWindow200K, true},
+		{"trusts-1m", contextWindow1M, contextWindow1M, true},
 		{"rejects-legacy-current-usage-207k", 207_000, 0, false},
 		{"rejects-zero", 0, 0, false},
 		{"rejects-arbitrary", 8_500, 0, false},
@@ -237,26 +248,29 @@ func TestResolveMaxTokens(t *testing.T) {
 		wantSource    string
 	}{
 		// [1m] 標記覆蓋 transcript 推斷（核心 regression 情境）
-		{"input-1m-overrides-inference", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "", 0, false, 1_000_000, maxTokensSourceInput1MMarker},
-		{"input-1m-uppercase", "claude-sonnet-4-5", "claude-sonnet-4-5[1M]", "", 0, false, 1_000_000, maxTokensSourceInput1MMarker},
+		{"input-1m-overrides-inference", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "", 0, false, contextWindow1M, maxTokensSourceInput1MMarker},
+		{"input-1m-uppercase", "claude-sonnet-4-5", "claude-sonnet-4-5[1M]", "", 0, false, contextWindow1M, maxTokensSourceInput1MMarker},
 		// 無標記：走家族/版本推斷
-		{"plain-inference-200k", "claude-sonnet-4-5", "claude-sonnet-4-5", "", 0, false, 200_000, maxTokensSourceModelInference},
-		{"plain-inference-fable-1m", "claude-fable-5", "", "", 0, false, 1_000_000, maxTokensSourceModelInference},
-		// 已驗證 input window：覆蓋 model 推斷
-		{"valid-input-window-200k", "claude-sonnet-4-5", "claude-sonnet-4-5", "", 200_000, true, 200_000, maxTokensSourceInputWindow},
-		{"valid-input-window-1m-overrides-200k-inference", "claude-sonnet-4-5", "claude-sonnet-4-5", "", 1_000_000, true, 1_000_000, maxTokensSourceInputWindow},
+		{"plain-inference-200k", "claude-sonnet-4-5", "claude-sonnet-4-5", "", 0, false, contextWindow200K, maxTokensSourceModelInference},
+		{"plain-inference-fable-1m", "claude-fable-5", "", "", 0, false, contextWindow1M, maxTokensSourceModelInference},
+		// 已驗證 input window：可採信（不低於推斷值才生效，non-demoting）
+		{"valid-input-window-200k", "claude-sonnet-4-5", "claude-sonnet-4-5", "", contextWindow200K, true, contextWindow200K, maxTokensSourceInputWindow},
+		// 推斷 200K，input 回報 1M（未知 1M 模型的 under-estimate rescue）→ 升級到 1M
+		{"input-window-rescues-underestimate", "claude-sonnet-4-5", "claude-sonnet-4-5", "", contextWindow1M, true, contextWindow1M, maxTokensSourceInputWindow},
+		// non-demoting 護欄（核心 regression）：推斷 1M、input 回報 200K、無 [1m] → 不降級，保持 1M
+		{"non-demoting-keeps-1m-inference", "claude-sonnet-4-6", "claude-sonnet-4-6", "", contextWindow200K, true, contextWindow1M, maxTokensSourceModelInference},
 		// 未驗證 input window（allow-set 拒絕的離群值）：落回 model 推斷
-		{"rejected-input-window-falls-back", "claude-sonnet-4-5", "claude-sonnet-4-5", "", 0, false, 200_000, maxTokensSourceModelInference},
+		{"rejected-input-window-falls-back", "claude-sonnet-4-5", "claude-sonnet-4-5", "", 0, false, contextWindow200K, maxTokensSourceModelInference},
 		// [1m] 標記覆蓋已驗證 input window（mixed-model 取捨）
-		{"1m-marker-overrides-input-window", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "", 200_000, true, 1_000_000, maxTokensSourceInput1MMarker},
+		{"1m-marker-overrides-input-window", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "", contextWindow200K, true, contextWindow1M, maxTokensSourceInput1MMarker},
 		// env var 無條件覆蓋所有層
 		{"env-overrides-1m-marker", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "300000", 0, false, 300_000, maxTokensSourceEnvOverride},
 		{"env-overrides-inference", "claude-sonnet-4-6", "", "500000", 0, false, 500_000, maxTokensSourceEnvOverride},
-		{"env-overrides-input-window", "claude-sonnet-4-5", "claude-sonnet-4-5", "500000", 200_000, true, 500_000, maxTokensSourceEnvOverride},
+		{"env-overrides-input-window", "claude-sonnet-4-5", "claude-sonnet-4-5", "500000", contextWindow200K, true, 500_000, maxTokensSourceEnvOverride},
 		// 無效 env：退回前一層來源
-		{"invalid-env-keeps-1m-marker", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "abc", 0, false, 1_000_000, maxTokensSourceInput1MMarker},
-		{"non-positive-env-keeps-inference", "claude-sonnet-4-6", "claude-sonnet-4-6", "0", 0, false, 1_000_000, maxTokensSourceModelInference},
-		{"invalid-env-keeps-input-window", "claude-sonnet-4-5", "claude-sonnet-4-5", "abc", 200_000, true, 200_000, maxTokensSourceInputWindow},
+		{"invalid-env-keeps-1m-marker", "claude-sonnet-4-5", "claude-sonnet-4-5[1m]", "abc", 0, false, contextWindow1M, maxTokensSourceInput1MMarker},
+		{"non-positive-env-keeps-inference", "claude-sonnet-4-6", "claude-sonnet-4-6", "0", 0, false, contextWindow1M, maxTokensSourceModelInference},
+		{"invalid-env-keeps-input-window", "claude-sonnet-4-5", "claude-sonnet-4-5", "abc", contextWindow200K, true, contextWindow200K, maxTokensSourceInputWindow},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

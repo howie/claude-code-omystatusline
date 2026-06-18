@@ -34,6 +34,19 @@ func TestFormatPRBadge(t *testing.T) {
 		}
 	})
 
+	t.Run("review state is case-insensitive", func(t *testing.T) {
+		got := FormatPRBadge(1, "", "APPROVED", " | ", false)
+		if !strings.Contains(got, "✓") || !strings.Contains(got, ColorGreen) { // ✓
+			t.Errorf("uppercase APPROVED should still show green check, got %q", got)
+		}
+	})
+
+	t.Run("negative number hides badge", func(t *testing.T) {
+		if got := FormatPRBadge(-1, "", "approved", " | ", false); got != "" {
+			t.Errorf("negative number should hide badge, got %q", got)
+		}
+	})
+
 	t.Run("unknown review state shows no glyph", func(t *testing.T) {
 		got := FormatPRBadge(9, "", "", " | ", false)
 		if strings.Contains(got, "✓") || strings.Contains(got, "✗") || strings.Contains(got, "\U0001F4AC") {

@@ -349,8 +349,9 @@ func FormatCostColored(cost float64, sep string) string {
 
 // prReviewGlyph 依 review state 回傳 (glyph, color)。
 // 未知/空 state 回傳空 glyph（只顯示 PR 編號，不加狀態符號）。
+// 大小寫不敏感（防禦性：官方 schema 為小寫，但上游若送 APPROVED 仍能匹配）。
 func prReviewGlyph(reviewState string) (string, string) {
-	switch reviewState {
+	switch strings.ToLower(reviewState) {
 	case "approved":
 		return "✓", ColorGreen
 	case "changes_requested":
@@ -368,7 +369,7 @@ func prReviewGlyph(reviewState string) (string, string) {
 // hyperlink 為假（如 ASCII 終端）時降級為純文字。
 // sep 為前導分隔符（例如 " | "）。
 func FormatPRBadge(number int, url, reviewState, sep string, hyperlink bool) string {
-	if number == 0 {
+	if number <= 0 {
 		return ""
 	}
 	glyph, glyphColor := prReviewGlyph(reviewState)

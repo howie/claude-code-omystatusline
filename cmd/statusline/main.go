@@ -51,7 +51,8 @@ func main() {
 	// 預設 inert：僅在 STATUSLINE_DUMP_INPUT 指定路徑時寫出 raw bytes。寫入失敗只警告，
 	// 不影響 status line 正常輸出。
 	if dumpPath := os.Getenv("STATUSLINE_DUMP_INPUT"); dumpPath != "" {
-		if werr := os.WriteFile(dumpPath, raw, 0o644); werr != nil {
+		// 0600: the dump may contain the last user message + session metadata; keep it owner-only.
+		if werr := os.WriteFile(dumpPath, raw, 0o600); werr != nil {
 			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_DUMP_INPUT write to %q failed: %v\n", dumpPath, werr)
 		}
 	}
@@ -542,8 +543,10 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 // resolveMaxTokens 決定 context 百分比的分母與其來源標籤（STATUSLINE_DEBUG 用）。
 // 優先順序（後者覆蓋前者）：
 //  1. effectiveModelID（transcript 推斷優先）的家族/版本推斷 — base/fallback，永不刪除。
-//  2. 已驗證的 inputWindow（contextWindowFromInput：context_window_size 等於已知容量時才為真）。
-//     僅當 inputWindowOK 為真才採信；離群值（含舊語意 current-usage payload）落回第 1 層。
+//  2. 已驗證的 inputWindow（contextWindowFromInput：context_window_size 等於已知容量時才為真），
+//     且 **non-demoting**：僅當 inputWindow >= 第 1 層推斷值才採信。可救回 under-estimate
+//     （推斷誤判為 200K 的未知 1M 模型），但永不把真正的 1M 視窗降級成 200K —— 因為
+//     context_window_size 的語意尚未經真實 payload 驗證，降級方向正是 #35/#36 的 inflated-% bug。
 //  3. inputModelID 的 "[1m]" 標記 — transcript 的 message.model 從不帶此後綴，
 //     1M beta session 只靠推斷會低估分母。刻意取捨：mixed-model session（input 為
 //     sonnet[1m] 但 transcript 最後是 opus 200K）以 session 主模型的 1M 為準。
@@ -551,7 +554,10 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 func resolveMaxTokens(effectiveModelID, inputModelID, envMax string, inputWindow int, inputWindowOK bool) (int, string) {
 	maxTokens := contextWindowForModel(effectiveModelID)
 	source := maxTokensSourceModelInference
-	if inputWindowOK {
+	// Non-demoting: trust the validated input window only when it does not lower the denominator
+	// below model inference. Rescues an under-estimate (unrecognized 1M model inferred as 200K)
+	// but never re-introduces the inflated-% bug (#35/#36) by demoting a true 1M window to 200K.
+	if inputWindowOK && inputWindow >= maxTokens {
 		maxTokens = inputWindow
 		source = maxTokensSourceInputWindow
 	}
@@ -668,13 +674,16 @@ func contextTokensFromUsage(u statusline.ContextUsage) int {
 }
 
 // prURL returns the PR URL, falling back to constructing one from workspace.repo when Claude Code
-// supplied a PR number and repo identity but no pr.url. Returns "" when no link can be formed.
+// supplied a PR number and repo identity but no pr.url. The fallback only handles github.com (the
+// "/pull/" path shape) — other hosts (GitLab uses "/merge_requests/") return "" rather than a
+// broken link, since Claude Code normally supplies pr.url directly anyway. Returns "" when no link
+// can be formed.
 func prURL(input statusline.Input) string {
 	if input.PR.URL != "" {
 		return input.PR.URL
 	}
 	r := input.Workspace.Repo
-	if input.PR.Number > 0 && r.Host != "" && r.Owner != "" && r.Name != "" {
+	if input.PR.Number > 0 && r.Host == "github.com" && r.Owner != "" && r.Name != "" {
 		return fmt.Sprintf("https://%s/%s/%s/pull/%d", r.Host, r.Owner, r.Name, input.PR.Number)
 	}
 	return ""
