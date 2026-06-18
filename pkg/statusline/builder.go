@@ -364,7 +364,7 @@ func prReviewGlyph(reviewState string) (string, string) {
 }
 
 // FormatPRBadge 格式化 open PR 徽章，例如 " | PR #1234 ✓"。
-// number == 0 時回傳 ""（zero-value 隱藏，沿用其他 Format* 慣例）。
+// number <= 0 時回傳 ""（zero/負值隱藏，沿用其他 Format* 慣例，且與 prURL 的 >0 一致）。
 // url != "" 且 hyperlink 為真時，以 OSC 8 包裹文字成可點連結；
 // hyperlink 為假（如 ASCII 終端）時降級為純文字。
 // sep 為前導分隔符（例如 " | "）。
