@@ -103,10 +103,11 @@ Formatted status line output to stdout
 - `InferModelFromLines(lines)` - reads `message.model` from last usage entry; used for mixed-model sessions
 - `maxTokens` (denominator) resolution chain (`resolveMaxTokens()`, `cmd/statusline/main.go`; later layers override earlier):
   1. Model inference: transcript `message.model` (preferred for mixed-model sessions) → `input.Model.ID` fallback → `contextWindowForModel()`
-  2. `[1m]` marker on `input.Model.ID` forces 1M — transcript model IDs never carry the suffix, so inference alone underestimates 1M-beta sessions
-  3. `STATUSLINE_MAX_TOKENS` env var is the **unconditional final override**
-  - **`input.ContextWindow.ContextWindowSize` is NOT used as denominator** — Claude Code sends the current token count there, not the model's max capacity; using it as denominator causes ~100% always
-  - Token count (numerator) uses `input.ContextWindow.CurrentUsage` when available (more accurate than transcript); falls back to transcript parsing
+  2. **Validated `input.ContextWindow.ContextWindowSize`** (`contextWindowFromInput()`): trusted as denominator **only** when it equals a known capacity (200K or 1M). Current docs say this field is the model's max capacity, but historically it carried the *current usage* (the `#35/#36` "always 100%" bug), so the allow-set rejects any other value and the model-inference layer remains the fallback — **fail-safe by construction**, never remove `contextWindowForModel()`
+  3. `[1m]` marker on `input.Model.ID` forces 1M — transcript model IDs never carry the suffix, so inference alone underestimates 1M-beta sessions; overrides a validated input window (mixed-model trade-off)
+  4. `STATUSLINE_MAX_TOKENS` env var is the **unconditional final override**
+  - Token count (numerator) uses `input.ContextWindow.CurrentUsage` when available (more accurate than transcript); falls back to transcript parsing. The bar percentage is always recomputed from tokens/maxTokens in `pkg/context` — Claude Code's precomputed `used_percentage` is NOT used for the bar, to keep bar rendering internally consistent
+  - To capture a real payload for schema verification: `STATUSLINE_DUMP_INPUT=<path>` writes the raw stdin JSON (inert unless set)
 - Model context window mapping (in `contextWindowForModel()`, `cmd/statusline/main.go`; **official Anthropic specs**):
   - ID containing `[1m]`: 1M (takes precedence over family/version rules)
   - Haiku: 200K | Sonnet/Opus/Fable major ≥ 5 OR (major==4 AND minor ≥ 6): 1M | others: 200K
@@ -122,9 +123,10 @@ Formatted status line output to stdout
 - Returns formatted time like "2h45m" and session count like "[3 sessions]"
 
 ### Statusline Module (`pkg/statusline/`)
-- `builder.go`: Core formatting logic, message extraction, system message filtering
+- `builder.go`: Core formatting logic, message extraction, system message filtering. `FormatPRBadge()` renders an open-PR badge (`PR #N` + review-state glyph), wrapped in an OSC 8 hyperlink in non-ASCII terminals (gated by `cfg.Sections.PR`, priority 6 segment)
 - `color.go`: ANSI color constants (gold for Opus, cyan for Sonnet, pink for Haiku)
-- `model.go`: Data structures (Input, Result, ContextInfo)
+- `model.go`: Data structures (Input, Result, ContextInfo). Input mirrors the official statusline schema, incl. `workspace.repo`, `pr.{number,url,review_state}`, nested `agent.name` (the old flat `agent_id`/`agent_type` were dead fields), `effort.level`, `thinking.enabled`, `workspace.added_dirs`. `ContextWindow` is a named type (shared with `contextWindowFromInput()`)
+- `truncate.go`: `VisibleWidth()` skips both CSI color sequences and OSC 8 hyperlinks (URL contributes 0 width) so truncation/wrap math stays correct with PR badges
 
 ### Voice Reminder Plugin
 - Separate Go binary in `cmd/voice-reminder/`

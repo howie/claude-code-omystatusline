@@ -69,6 +69,7 @@ type SectionVisibility struct {
 	Autocompact  bool `json:"autocompact"`
 	CacheHitRate bool `json:"cache_hit_rate"`
 	UserMessage  bool `json:"user_message"`
+	PR           bool `json:"pr"`
 }
 
 // DefaultConfig 返回預設配置（所有區段可見）
@@ -93,6 +94,7 @@ func DefaultConfig() *Config {
 			Autocompact:  true,
 			CacheHitRate: true,
 			UserMessage:  true,
+			PR:           true,
 		},
 	}
 }
