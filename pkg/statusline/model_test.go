@@ -79,6 +79,110 @@ func TestInputRateLimitsParsing(t *testing.T) {
 	}
 }
 
+// TestInputPRAndRepoParsing 驗證 Claude Code v2.1.154+ 新增的 pr 與 workspace.repo
+// 欄位能正確解析（取自官方 statusline JSON schema）。
+func TestInputPRAndRepoParsing(t *testing.T) {
+	raw := `{
+		"workspace": {
+			"current_dir": "/x",
+			"added_dirs": ["/extra/one", "/extra/two"],
+			"repo": { "host": "github.com", "owner": "anthropics", "name": "claude-code" }
+		},
+		"pr": {
+			"number": 1234,
+			"url": "https://github.com/anthropics/claude-code/pull/1234",
+			"review_state": "approved"
+		}
+	}`
+
+	var input Input
+	if err := json.Unmarshal([]byte(raw), &input); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	if got := input.Workspace.Repo.Host; got != "github.com" {
+		t.Errorf("Repo.Host = %q, want github.com", got)
+	}
+	if got := input.Workspace.Repo.Owner; got != "anthropics" {
+		t.Errorf("Repo.Owner = %q, want anthropics", got)
+	}
+	if got := input.Workspace.Repo.Name; got != "claude-code" {
+		t.Errorf("Repo.Name = %q, want claude-code", got)
+	}
+	if got := len(input.Workspace.AddedDirs); got != 2 {
+		t.Errorf("len(AddedDirs) = %d, want 2", got)
+	}
+	if got := input.PR.Number; got != 1234 {
+		t.Errorf("PR.Number = %d, want 1234", got)
+	}
+	if got := input.PR.URL; got != "https://github.com/anthropics/claude-code/pull/1234" {
+		t.Errorf("PR.URL = %q, unexpected", got)
+	}
+	if got := input.PR.ReviewState; got != "approved" {
+		t.Errorf("PR.ReviewState = %q, want approved", got)
+	}
+}
+
+// TestInputAgentEffortThinkingParsing 驗證巢狀 agent.name（取代死欄位 agent_id/agent_type）
+// 以及 effort.level、thinking.enabled 能正確解析。
+func TestInputAgentEffortThinkingParsing(t *testing.T) {
+	raw := `{
+		"agent": { "name": "security-reviewer" },
+		"effort": { "level": "high" },
+		"thinking": { "enabled": true }
+	}`
+
+	var input Input
+	if err := json.Unmarshal([]byte(raw), &input); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	if got := input.Agent.Name; got != "security-reviewer" {
+		t.Errorf("Agent.Name = %q, want security-reviewer", got)
+	}
+	if got := input.Effort.Level; got != "high" {
+		t.Errorf("Effort.Level = %q, want high", got)
+	}
+	if !input.Thinking.Enabled {
+		t.Error("Thinking.Enabled = false, want true")
+	}
+}
+
+// TestInputContextWindowParsing 驗證抽成 named type 後的 context_window 仍正確解析，
+// 含官方 schema 的 used_percentage / context_window_size / current_usage。
+func TestInputContextWindowParsing(t *testing.T) {
+	raw := `{
+		"context_window": {
+			"total_input_tokens": 15500,
+			"context_window_size": 1000000,
+			"used_percentage": 8,
+			"remaining_percentage": 92,
+			"current_usage": {
+				"input_tokens": 8500,
+				"output_tokens": 1200,
+				"cache_creation_input_tokens": 5000,
+				"cache_read_input_tokens": 2000
+			}
+		}
+	}`
+
+	var input Input
+	if err := json.Unmarshal([]byte(raw), &input); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	cw := input.ContextWindow
+	if cw.ContextWindowSize != 1_000_000 {
+		t.Errorf("ContextWindowSize = %d, want 1000000", cw.ContextWindowSize)
+	}
+	if cw.UsedPercentage != 8 {
+		t.Errorf("UsedPercentage = %d, want 8", cw.UsedPercentage)
+	}
+	if cw.CurrentUsage.CacheReadInputTokens != 2000 {
+		t.Errorf("CurrentUsage.CacheReadInputTokens = %d, want 2000", cw.CurrentUsage.CacheReadInputTokens)
+	}
+}
+
 // TestInputSessionNameParsing 驗證 top-level session_name 欄位能正確解析。
 // 此測試對應 #31：優先使用 input.session_name，免去掃描 transcript。
 func TestInputSessionNameParsing(t *testing.T) {

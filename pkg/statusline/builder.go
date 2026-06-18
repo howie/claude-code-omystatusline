@@ -346,3 +346,43 @@ func FormatCostColored(cost float64, sep string) string {
 	}
 	return fmt.Sprintf("%s%s💰 $%.2f%s", sep, color, cost, ColorReset)
 }
+
+// prReviewGlyph 依 review state 回傳 (glyph, color)。
+// 未知/空 state 回傳空 glyph（只顯示 PR 編號，不加狀態符號）。
+// 大小寫不敏感（防禦性：官方 schema 為小寫，但上游若送 APPROVED 仍能匹配）。
+func prReviewGlyph(reviewState string) (string, string) {
+	switch strings.ToLower(reviewState) {
+	case "approved":
+		return "✓", ColorGreen
+	case "changes_requested":
+		return "✗", ColorRed
+	case "pending", "commented", "draft":
+		return "💬", ColorDim
+	default:
+		return "", ""
+	}
+}
+
+// FormatPRBadge 格式化 open PR 徽章，例如 " | PR #1234 ✓"。
+// number <= 0 時回傳 ""（zero/負值隱藏，沿用其他 Format* 慣例，且與 prURL 的 >0 一致）。
+// url != "" 且 hyperlink 為真時，以 OSC 8 包裹文字成可點連結；
+// hyperlink 為假（如 ASCII 終端）時降級為純文字。
+// sep 為前導分隔符（例如 " | "）。
+func FormatPRBadge(number int, url, reviewState, sep string, hyperlink bool) string {
+	if number <= 0 {
+		return ""
+	}
+	glyph, glyphColor := prReviewGlyph(reviewState)
+
+	// 連結文字核心：PR #N 以 dim 顯示，狀態 glyph 以其狀態色顯示。
+	text := fmt.Sprintf("%sPR #%d%s", ColorDim, number, ColorReset)
+	if glyph != "" {
+		text += fmt.Sprintf(" %s%s%s", glyphColor, glyph, ColorReset)
+	}
+
+	if url != "" && hyperlink {
+		// OSC 8: \033]8;;URL\033\\ text \033]8;;\033\\
+		text = fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", url, text)
+	}
+	return sep + text
+}

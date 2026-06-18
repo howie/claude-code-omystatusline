@@ -14,13 +14,30 @@ type Segment struct {
 }
 
 // VisibleWidth 計算字串的可見欄位寬度，
-// 跳過 ANSI escape sequences，emoji/寬字元算 2 欄。
+// 跳過 ANSI escape sequences（CSI 顏色序列與 OSC 8 超連結），emoji/寬字元算 2 欄。
+//
+// OSC 8 超連結格式為 \033]8;;URL\033\\text\033]8;;\033\\：URL 與 OSC 包裹本身貢獻
+// 0 寬，只有被包住的連結文字（text）算入寬度。若不跳過 OSC，整段 URL 會被誤計，
+// 破壞 TruncateLine / WrapLine 的優先級截斷數學。
 func VisibleWidth(s string) int {
 	width := 0
-	inEscape := false
+	inEscape := false // CSI 序列（\033[...）
+	inOSC := false    // OSC 序列（\033]...），如 OSC 8 超連結
 	runes := []rune(s)
 	for i := 0; i < len(runes); i++ {
 		r := runes[i]
+		if inOSC {
+			// OSC 以 BEL（0x07）或 ST（ESC \）結束
+			if r == '\a' {
+				inOSC = false
+				continue
+			}
+			if r == '\033' && i+1 < len(runes) && runes[i+1] == '\\' {
+				inOSC = false
+				i++ // 跳過 ST 的 '\'
+			}
+			continue
+		}
 		if inEscape {
 			// CSI 序列以字母結束（@-~，即 0x40-0x7E）
 			if r >= 0x40 && r <= 0x7E {
@@ -31,6 +48,11 @@ func VisibleWidth(s string) int {
 		if r == '\033' && i+1 < len(runes) && runes[i+1] == '[' {
 			inEscape = true
 			i++ // 跳過 '['
+			continue
+		}
+		if r == '\033' && i+1 < len(runes) && runes[i+1] == ']' {
+			inOSC = true
+			i++ // 跳過 ']'
 			continue
 		}
 		width += runeWidth(r)

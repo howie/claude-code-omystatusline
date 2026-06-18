@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,6 +29,7 @@ import (
 // maxTokens 來源標籤（STATUSLINE_DEBUG 輸出用），對應 resolveMaxTokens 的三層優先順序。
 const (
 	maxTokensSourceModelInference = "model-inference"
+	maxTokensSourceInputWindow    = "input-window"
 	maxTokensSourceInput1MMarker  = "input-1m-marker"
 	maxTokensSourceEnvOverride    = "env-override"
 )
@@ -40,7 +42,21 @@ const (
 
 func main() {
 	var input statusline.Input
-	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
+	raw, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read input: %v\n", err)
+		os.Exit(1)
+	}
+	// 擷取真實 payload 供 schema 驗證（context_window_size 語意、新欄位 key 名）。
+	// 預設 inert：僅在 STATUSLINE_DUMP_INPUT 指定路徑時寫出 raw bytes。寫入失敗只警告，
+	// 不影響 status line 正常輸出。
+	if dumpPath := os.Getenv("STATUSLINE_DUMP_INPUT"); dumpPath != "" {
+		// 0600: the dump may contain the last user message + session metadata; keep it owner-only.
+		if werr := os.WriteFile(dumpPath, raw, 0o600); werr != nil {
+			fmt.Fprintf(os.Stderr, "statusline: STATUSLINE_DUMP_INPUT write to %q failed: %v\n", dumpPath, werr)
+		}
+	}
+	if err := json.Unmarshal(raw, &input); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decode input: %v\n", err)
 		os.Exit(1)
 	}
@@ -62,9 +78,10 @@ func main() {
 
 	// 決定 maxTokens（分母）與 token 數（分子）。
 	//
-	// ContextWindowSize from Claude Code is the current token count occupying the context window,
-	// NOT the model's max capacity. Using it as the denominator causes percentage ≈ 100% always.
-	// Always derive maxTokens from the model ID (theoretical max: 1M for Sonnet/Opus 4.6+).
+	// 分母來源（resolveMaxTokens，後者覆蓋前者）：model 推斷 → 已驗證的 context_window_size
+	// → "[1m]" 標記 → STATUSLINE_MAX_TOKENS。context_window_size 僅在等於已知容量（200K/1M）
+	// 時才採信為分母（contextWindowFromInput），否則保留 model 推斷為準 —— 這道 allow-set
+	// 護欄避免重演 #35/#36「永遠 100%」bug（該欄位歷史上曾是 current usage 而非容量）。
 	//
 	// hasContextWindow controls whether CurrentUsage (more accurate) or transcript parsing is
 	// used for the token count numerator. It does NOT affect maxTokens.
@@ -75,7 +92,9 @@ func main() {
 	if effectiveModelID == "" {
 		effectiveModelID = input.Model.ID
 	}
-	maxTokens, maxTokensSource := resolveMaxTokens(effectiveModelID, input.Model.ID, os.Getenv("STATUSLINE_MAX_TOKENS"))
+	inputWindow, inputWindowOK := contextWindowFromInput(input.ContextWindow)
+	maxTokens, maxTokensSource := resolveMaxTokens(
+		effectiveModelID, input.Model.ID, os.Getenv("STATUSLINE_MAX_TOKENS"), inputWindow, inputWindowOK)
 
 	// Phase 3: 並行處理所有資料收集
 	results := make(chan statusline.Result, 14)
@@ -375,6 +394,14 @@ func main() {
 		costDisplay = statusline.FormatCostColored(input.Cost.TotalCostUSD, sep.Divider)
 	}
 
+	// PR 徽章（open PR）：ASCII 終端降級為純文字，否則以 OSC 8 包成可點連結。
+	prDisplay := ""
+	if cfg.Sections.PR {
+		prDisplay = statusline.FormatPRBadge(
+			input.PR.Number, prURL(input), input.PR.ReviewState, sep.Divider,
+			context.RenderMode != terminal.ModeASCII)
+	}
+
 	// 程式碼行數變化 (+N/-M)
 	linesDisplay := statusline.FormatLinesChanged(
 		input.Cost.TotalLinesAdded, input.Cost.TotalLinesRemoved)
@@ -425,6 +452,7 @@ func main() {
 		{Content: fmt.Sprintf("%s[%s] 📂 %s", statusline.ColorReset, modelDisplay, projectName), Priority: 1},
 		{Content: sessionNameDisplay, Priority: 10},
 		{Content: gitDisplay, Priority: 3},
+		{Content: prDisplay, Priority: 6},
 		{Content: contextBar, Priority: 4},
 		{Content: contextInfo, Priority: 2},
 		{Content: speedDisplay, Priority: 7},
@@ -514,14 +542,25 @@ func formatSegments(segments []statusline.Segment, maxWidth int, overflowMode st
 
 // resolveMaxTokens 決定 context 百分比的分母與其來源標籤（STATUSLINE_DEBUG 用）。
 // 優先順序（後者覆蓋前者）：
-//  1. effectiveModelID（transcript 推斷優先）的家族/版本推斷
-//  2. inputModelID 的 "[1m]" 標記 — transcript 的 message.model 從不帶此後綴，
+//  1. effectiveModelID（transcript 推斷優先）的家族/版本推斷 — base/fallback，永不刪除。
+//  2. 已驗證的 inputWindow（contextWindowFromInput：context_window_size 等於已知容量時才為真），
+//     且 **non-demoting**：僅當 inputWindow >= 第 1 層推斷值才採信。可救回 under-estimate
+//     （推斷誤判為 200K 的未知 1M 模型），但永不把真正的 1M 視窗降級成 200K —— 因為
+//     context_window_size 的語意尚未經真實 payload 驗證，降級方向正是 #35/#36 的 inflated-% bug。
+//  3. inputModelID 的 "[1m]" 標記 — transcript 的 message.model 從不帶此後綴，
 //     1M beta session 只靠推斷會低估分母。刻意取捨：mixed-model session（input 為
 //     sonnet[1m] 但 transcript 最後是 opus 200K）以 session 主模型的 1M 為準。
-//  3. STATUSLINE_MAX_TOKENS env var — 文件化的無條件 override。
-func resolveMaxTokens(effectiveModelID, inputModelID, envMax string) (int, string) {
+//  4. STATUSLINE_MAX_TOKENS env var — 文件化的無條件 override。
+func resolveMaxTokens(effectiveModelID, inputModelID, envMax string, inputWindow int, inputWindowOK bool) (int, string) {
 	maxTokens := contextWindowForModel(effectiveModelID)
 	source := maxTokensSourceModelInference
+	// Non-demoting: trust the validated input window only when it does not lower the denominator
+	// below model inference. Rescues an under-estimate (unrecognized 1M model inferred as 200K)
+	// but never re-introduces the inflated-% bug (#35/#36) by demoting a true 1M window to 200K.
+	if inputWindowOK && inputWindow >= maxTokens {
+		maxTokens = inputWindow
+		source = maxTokensSourceInputWindow
+	}
 	if strings.Contains(strings.ToLower(inputModelID), "[1m]") {
 		maxTokens = contextWindow1M
 		source = maxTokensSourceInput1MMarker
@@ -611,12 +650,43 @@ func claudeModelVersion(id string) (int, int) {
 	return -1, -1
 }
 
+// contextWindowFromInput trusts Claude Code's reported context_window_size as the percentage
+// denominator ONLY when it equals a known model capacity (200K or 1M). Per current docs this field
+// is the model's MAXIMUM capacity, but historically it carried the current usage instead — the
+// "always 100%" #35/#36 bug. Rejecting any other value (ok=false) means a stray or legacy payload
+// can never poison the denominator: the caller falls back to model inference. Fail-safe by
+// construction. Returns (size, true) when trusted, (0, false) otherwise.
+func contextWindowFromInput(cw statusline.ContextWindow) (int, bool) {
+	switch cw.ContextWindowSize {
+	case contextWindow200K, contextWindow1M:
+		return cw.ContextWindowSize, true
+	default:
+		return 0, false
+	}
+}
+
 // contextTokensFromUsage sums the input-side tokens from a ContextUsage value.
 // OutputTokens is intentionally excluded: context window pressure is driven by
 // input+cache tokens; output tokens extend from the same window but don't
 // independently occupy context space (mirrors usageFromLines in tracker.go).
 func contextTokensFromUsage(u statusline.ContextUsage) int {
 	return u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
+}
+
+// prURL returns the PR URL, falling back to constructing one from workspace.repo when Claude Code
+// supplied a PR number and repo identity but no pr.url. The fallback only handles github.com (the
+// "/pull/" path shape) — other hosts (GitLab uses "/merge_requests/") return "" rather than a
+// broken link, since Claude Code normally supplies pr.url directly anyway. Returns "" when no link
+// can be formed.
+func prURL(input statusline.Input) string {
+	if input.PR.URL != "" {
+		return input.PR.URL
+	}
+	r := input.Workspace.Repo
+	if input.PR.Number > 0 && r.Host == "github.com" && r.Owner != "" && r.Name != "" {
+		return fmt.Sprintf("https://%s/%s/%s/pull/%d", r.Host, r.Owner, r.Name, input.PR.Number)
+	}
+	return ""
 }
 
 func joinWithSep(parts []string, sep string) string {

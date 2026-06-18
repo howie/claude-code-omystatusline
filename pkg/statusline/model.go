@@ -17,6 +17,17 @@ type Input struct {
 	Workspace struct {
 		CurrentDir string `json:"current_dir"`
 		ProjectDir string `json:"project_dir,omitempty"` // v2.0.25+ 新增
+		// AddedDirs 為透過 /add-dir 或 --add-dir 加入的額外目錄（multi-root session）。
+		// 目前僅 model 不渲染，保留作為未來訊號。
+		AddedDirs []string `json:"added_dirs,omitempty"`
+		// Repo 為 Claude Code v2.1.154+ 由 origin remote 解析的 repo 身分
+		//（host/owner/name，如 github.com/anthropics/claude-code）。
+		// 在 git repo 外或無 origin remote 時不提供。目前作為 PR URL 的 fallback 來源。
+		Repo struct {
+			Host  string `json:"host,omitempty"`
+			Owner string `json:"owner,omitempty"`
+			Name  string `json:"name,omitempty"`
+		} `json:"repo,omitempty"`
 	} `json:"workspace"`
 	Version     string `json:"version,omitempty"` // v2.0.25+ 新增
 	OutputStyle struct {
@@ -32,25 +43,32 @@ type Input struct {
 	// ContextWindow 為 Claude Code 直接提供的 context window 使用量。
 	// 此欄位比 transcript 解析更準確（worktree session 也能正確讀取），
 	// 應優先使用此欄位，transcript 作為 fallback。
-	// ContextWindowSize == 0 表示舊版 Claude Code 不提供此資料；> 0 才視為有效。
-	ContextWindow struct {
-		// TotalInputTokens / TotalOutputTokens：整個 session 的累計量，僅供參考，不用於進度條。
-		TotalInputTokens  int `json:"total_input_tokens,omitempty"`
-		TotalOutputTokens int `json:"total_output_tokens,omitempty"`
-		// ContextWindowSize is the current token count in the context window sent by Claude Code.
-		// This is NOT the model's maximum capacity (e.g. 1M for Sonnet 4.6).
-		// Use only to detect whether Claude Code provides CurrentUsage data (> 0 means yes).
-		// Never use as the percentage denominator; use contextWindowForModel() instead.
-		ContextWindowSize int          `json:"context_window_size,omitempty"`
-		CurrentUsage      ContextUsage `json:"current_usage,omitempty"`
-		// UsedPercentage / RemainingPercentage：由 Claude Code 計算，僅供參考。
-		// 進度條使用 BuildFromTokens 自行計算，保持與 bar 渲染邏輯一致。
-		UsedPercentage      int `json:"used_percentage,omitempty"`
-		RemainingPercentage int `json:"remaining_percentage,omitempty"`
-	} `json:"context_window,omitempty"`
-	AgentID   string `json:"agent_id,omitempty"`
-	AgentType string `json:"agent_type,omitempty"`
-	Worktree  struct {
+	// ContextWindowSize == 0 表示舊版 Claude Code 不提供 CurrentUsage 資料；> 0 才視為有效。
+	ContextWindow ContextWindow `json:"context_window,omitempty"`
+	// Agent.Name 為當前 subagent context 名稱（--agent flag 或 agent 設定時提供）。
+	// 官方 schema 為巢狀 "agent.name"（舊版本誤用 flat agent_id/agent_type，從未收到值）。
+	// 與 pkg/agents 由 transcript 推導的歷史 agents line 不同，勿混用。
+	Agent struct {
+		Name string `json:"name,omitempty"`
+	} `json:"agent,omitempty"`
+	// Effort 為當前 reasoning effort（low/medium/high/xhigh/max）。
+	// 模型不支援 effort 參數時不提供。目前僅 model 不渲染。
+	Effort struct {
+		Level string `json:"level,omitempty"`
+	} `json:"effort,omitempty"`
+	// Thinking 為 extended thinking 是否啟用。目前僅 model 不渲染。
+	Thinking struct {
+		Enabled bool `json:"enabled,omitempty"`
+	} `json:"thinking,omitempty"`
+	// PR 為當前分支的 open pull request（Claude Code v2.1.154+）。
+	// 找到 open PR 前、非 git repo、或 PR 已 merge/close 時不提供。
+	// ReviewState 可能獨立缺席（approved/pending/changes_requested/draft）。
+	PR struct {
+		Number      int    `json:"number,omitempty"`
+		URL         string `json:"url,omitempty"`
+		ReviewState string `json:"review_state,omitempty"`
+	} `json:"pr,omitempty"`
+	Worktree struct {
 		Name string `json:"name,omitempty"`
 		Path string `json:"path,omitempty"`
 		// Branch 為 worktree 目前所在的分支（對應官方 schema 的 "branch"）。
@@ -77,6 +95,25 @@ type Input struct {
 			ResetsAt       int64   `json:"resets_at,omitempty"`
 		} `json:"seven_day,omitempty"`
 	} `json:"rate_limits,omitempty"`
+}
+
+// ContextWindow mirrors Claude Code's context_window object from the status line input.
+type ContextWindow struct {
+	// TotalInputTokens / TotalOutputTokens：整個 session 的累計量，僅供參考，不用於進度條。
+	TotalInputTokens  int `json:"total_input_tokens,omitempty"`
+	TotalOutputTokens int `json:"total_output_tokens,omitempty"`
+	// ContextWindowSize is Claude Code's reported context window size. Per current docs it is the
+	// model's MAXIMUM capacity (200000, or 1000000 for extended context). Historically this field
+	// carried the current usage instead, which caused the "always 100%" bug (#35/#36) — so it is
+	// trusted as the percentage denominator ONLY when it matches a known capacity (see
+	// contextWindowFromInput in cmd/statusline). Otherwise the model-inference path remains the
+	// source of truth. > 0 still indicates CurrentUsage data is available.
+	ContextWindowSize int          `json:"context_window_size,omitempty"`
+	CurrentUsage      ContextUsage `json:"current_usage,omitempty"`
+	// UsedPercentage / RemainingPercentage：由 Claude Code 計算，僅供參考。
+	// 進度條使用 BuildFromTokens 自行計算，保持與 bar 渲染邏輯一致。
+	UsedPercentage      int `json:"used_percentage,omitempty"`
+	RemainingPercentage int `json:"remaining_percentage,omitempty"`
 }
 
 // ContextUsage holds per-API-call token counts from Claude Code's context_window.current_usage.

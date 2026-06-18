@@ -28,6 +28,36 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatal("expected sections.api_limits to be true by default")
 		return
 	}
+	if !cfg.Sections.PR {
+		t.Fatal("expected sections.pr to be true by default")
+		return
+	}
+}
+
+// TestLoadPartialConfigKeepsPRDefault 驗證使用者 config 省略 "pr" key 時，
+// 仍靠 default 層繼承 PR=true（向後相容）。
+func TestLoadPartialConfigKeepsPRDefault(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+
+	configDir := filepath.Join(dir, ".claude", "omystatusline")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// 省略 sections.pr，僅設其他欄位。
+	configJSON := `{"sections":{"tools":false}}`
+	if err := os.WriteFile(filepath.Join(configDir, "config.json"), []byte(configJSON), 0644); err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	cfg := Load()
+	if !cfg.Sections.PR {
+		t.Fatal("expected sections.pr to remain true when omitted from user config")
+		return
+	}
 }
 
 func TestLoadMissingFile(t *testing.T) {

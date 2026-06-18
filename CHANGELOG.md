@@ -1,4 +1,51 @@
-# Changelog
+# CHANGELOG
+
+## [1.3.0] - 2026-06-18
+
+### Features
+
+- follow Claude Code statusline schema additions (repo/pr, safe context_window_size, agent.name)
+- use input.session_name directly instead of transcript parsing (#31) (#34)
+- read rate_limits from input JSON instead of OAuth API call (#30) (#33)
+- add cache hit rate display to status line
+- add smart line wrapping when status line exceeds terminal width
+- auto-truncate status line to fit terminal width
+- gradient progress bar, terminal detection, and separator styles
+- add lines changed display, cost color thresholds, and zero-value hiding
+- add claude-hud inspired features — tools, agents, todo, speed, git status, API limits
+- upgrade to v2.0.0 for Claude 4.5/4.6 era
+- enhance uninstall command to completely remove all installations
+
+### Bug Fixes
+
+- address mob-review findings (non-demoting window, dump perms, case-insensitive PR state)
+- context window stuck at 100% for Fable 5 and [1m] sessions (#36)
+- context window percentage always shows 100% (#35)
+- correct worktree.original_cwd JSON field name (#29) (#32)
+- update context window fallback to official 1M specs with future-proof version parsing (#28)
+- use input.ContextWindow as primary source for token tracking (#27)
+- calibrate context window by model family and infer from transcript (#26)
+- eliminate double-read on ReadTail failure; fix ReadAll n=0 bug; update comments
+- address second-round PR review — error propagation, HasData wiring, tests, comments
+- address PR review — tests, type docs, AnalyzeDetailed fallback, wrapper
+- show 📡 instead of 0% -- for local-agent-mode sessions
+- warn on invalid STATUSLINE_MAX_TOKENS; improve test coverage
+- auto-detect context window size from model ID
+- bump result channel buffer to 14 and add FormatCacheDisplay test
+- address PR review issues — error logging and division-by-zero guard
+- split context segment so percentage survives narrow terminals
+- reduce statusline visual clutter — smarter worktree labels, clearer separators
+- address PR review issues — error handling, tests, doc comments
+- apply gofmt -s formatting to truncate_test.go
+- move voice-reminder slash commands to tracked commands/ directory
+- filter <local-command-caveat> system messages from status line
+- resolve worktree detection issue and bump version to 1.2.1
+- resolve symlinks in git branch tests and update gitignore
+- voice-reminder sound config and install script error, bump version to 1.1.1
+- worktree detection with .worktrees/ directory (#9)
+- make Go modules cache step non-blocking in CI
+- update CI workflow paths for refactored project structure
+
 
 All notable changes to this project will be documented in this file.
 
