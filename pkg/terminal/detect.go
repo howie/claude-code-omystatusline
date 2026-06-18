@@ -4,8 +4,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
-	"unsafe"
 )
 
 // RenderMode 終端渲染模式
@@ -49,31 +47,17 @@ func Detect() RenderMode {
 	return ModeASCII
 }
 
-// winsize 是 TIOCGWINSZ ioctl 的回傳結構
-type winsize struct {
-	Row    uint16
-	Col    uint16
-	Xpixel uint16
-	Ypixel uint16
-}
-
 // Width 回傳終端的欄位寬度。
-// 優先用 ioctl TIOCGWINSZ，其次讀 COLUMNS 環境變數，最後預設 120。
+// 優先用平台原生查詢（Unix: ioctl TIOCGWINSZ；Windows: 不支援，直接 fallback），
+// 其次讀 COLUMNS 環境變數，最後預設 120。
+// 平台相關的 ioctl 實作見 width_unix.go / width_windows.go（以 build tag 分流，
+// 讓 GOOS=windows 交叉編譯不會碰到 Unix-only 的 syscall.SYS_IOCTL / TIOCGWINSZ）。
 func Width() int {
-	// 嘗試從 stdout/stderr/stdin 取得終端寬度
-	for _, fd := range []uintptr{1, 2, 0} {
-		var ws winsize
-		if _, _, errno := syscall.Syscall(
-			syscall.SYS_IOCTL,
-			fd,
-			syscall.TIOCGWINSZ,
-			uintptr(unsafe.Pointer(&ws)),
-		); errno == 0 && ws.Col > 0 {
-			return int(ws.Col)
-		}
+	if w, ok := terminalWidthFromIoctl(); ok {
+		return w
 	}
 
-	// Fallback: COLUMNS 環境變數
+	// Fallback: COLUMNS 環境變數（Claude Code 在 statusline context 下會設定此變數）
 	if cols := os.Getenv("COLUMNS"); cols != "" {
 		if n, err := strconv.Atoi(cols); err == nil && n > 0 {
 			return n
