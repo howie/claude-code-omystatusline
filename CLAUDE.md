@@ -113,8 +113,10 @@ Formatted status line output to stdout
   - Haiku: 200K | Sonnet/Opus/Fable major ≥ 5 OR (major==4 AND minor ≥ 6): 1M | others: 200K
   - Unknown non-empty families apply the same version rule (major ≥ 5 → 1M); otherwise 200K with a stderr warning | empty: `DefaultMaxTokens`
   - Version parsed via `claudeModelVersion()`: scans from end for two consecutive small integers (< 100), ignores date suffixes; single-version IDs (e.g. `claude-fable-5`) fall back to `{major}.0`
+  - Per the 2026 official catalog, every current model is 1M **except Haiku (200K)**. The default model Sonnet 5 (`claude-sonnet-5`, no `[1m]` variant) is already covered: it parses to `(5,0)` and the `major ≥ 5` rule maps it to 1M — no special-casing needed. `claude-mythos-5` is not in the named-family switch but still resolves to 1M via the unknown-family `major ≥ 5` branch (no stderr warning).
 - Generates visual progress bar (██████░░░░ format)
 - Color-coded warnings: green (<60%), gold (60-80%), red (≥80%)
+- Auto-compact: the `autocompact` section (`DetectAutocompact`) only **passively detects** compactions already recorded in the transcript (`type:"summary"`, or a system message containing `autocompact`/`context window`/`compressed`); it never triggers or predicts one. Actual auto-compact is Claude Code core behavior keyed to the model's context window, with an internal threshold that is **not** exposed in the statusline stdin JSON (no `tokens_until_autocompact` field). On a 1M window it fires only near ~900K tokens, so it rarely triggers — this is expected, not a bug. The red bar at ≥80% (≈800K on 1M) is the existing near-limit signal.
 
 ### Session Module (`pkg/session/`)
 - Stores session data in `~/.claude/session-tracker/`
