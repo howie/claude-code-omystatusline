@@ -329,6 +329,9 @@ func TestContextWindowForModel(t *testing.T) {
 		{"sonnet-46", "claude-sonnet-4-6", 1_000_000},
 		{"sonnet-uppercase", "CLAUDE-SONNET-4-6", 1_000_000},
 		{"sonnet-47-future", "claude-sonnet-4-7", 1_000_000},
+		// Sonnet 5：現預設模型，真實 ID 無 minor（claudeModelVersion → (5,0)），major >= 5 → 1M
+		{"sonnet-5-default", "claude-sonnet-5", 1_000_000},
+		{"sonnet-5-dated", "claude-sonnet-5-20260101", 1_000_000},
 		// Sonnet 5.x：未來大版本，major >= 5 → 1M
 		{"sonnet-50-future-major", "claude-sonnet-5-0", 1_000_000},
 		// Sonnet 4.5 以下: 200K（官方規格）
@@ -352,6 +355,8 @@ func TestContextWindowForModel(t *testing.T) {
 		{"fable-5-1m-marker", "claude-fable-5[1m]", 1_000_000},
 		{"sonnet-45-1m-marker", "claude-sonnet-4-5[1m]", 1_000_000},
 		// 未知非空模型：版本規則仍適用（major >= 5 → 1M），其餘保守 fallback 200K
+		// Mythos 5：未列入 named-family switch，走 case id != "" 分支，(5,0) → 1M（不觸發 200K fallback 警告）
+		{"mythos-5", "claude-mythos-5", 1_000_000},
 		{"unknown-family-major5", "claude-nova-5", 1_000_000},
 		{"unknown-family-major4-minor6", "claude-nova-4-6", 1_000_000},
 		{"unknown-future", "claude-future-1", 200_000},

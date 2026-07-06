@@ -10,6 +10,13 @@ jobs:
   build:
     name: Build and Test
     runs-on: ${{ matrix.os }}
+    # Build cgo-free: the project has zero cgo, and on macos-latest the stdlib net
+    # cgo resolver (pulled in by net/http in pkg/apilimits) forces external linking
+    # with Apple's ld, producing test binaries without an LC_UUID load command that
+    # newer dyld aborts on. CGO_ENABLED=0 keeps everything on Go's internal linker
+    # (always writes LC_UUID) and matches the cgo-free binaries release.yml ships.
+    env:
+      CGO_ENABLED: "0"
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]

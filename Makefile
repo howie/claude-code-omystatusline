@@ -16,6 +16,9 @@ INSTALL_SCRIPT = scripts/install.sh
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOFLAGS = -ldflags="-s -w"
+# 專案零 cgo：關閉 cgo 讓本機 build/test 與 CI、release 的靜態 binary 一致，
+# 並避免 macOS 上 net cgo resolver 觸發 external linking 導致 test binary 缺 LC_UUID。
+export CGO_ENABLED = 0
 
 .PHONY: all build build-voice-reminder install install-simple uninstall clean test lint fmt install-hooks uninstall-hooks help
 
