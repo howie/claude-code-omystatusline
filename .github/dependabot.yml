@@ -3,9 +3,13 @@
 #
 # Two ecosystems are tracked:
 #   1. github-actions - keeps the action versions in .github/workflows/*.yml current
-#      and patched (this is where the real churn is; the module has no external deps yet).
-#   2. gomod - no external dependencies today (pure stdlib), included so that the go
-#      directive and any future dependency picks up security updates automatically.
+#      and patched. This is the main source of dependency churn here.
+#   2. gomod - the Go module has no external dependencies yet (pure stdlib, no go.sum),
+#      so there is nothing to bump today; the entry is here so that any dependency added
+#      later automatically gets version-update PRs. Note: security PRs are a separate
+#      feature - they require Dependabot security updates (and Dependabot alerts) to be
+#      enabled at the repo level (Settings > Code security); this version-update config
+#      does not open security PRs on its own.
 #
 # Grouping policy (deliberate):
 #   * minor + patch VERSION updates are grouped into one PR per ecosystem to cut noise.
