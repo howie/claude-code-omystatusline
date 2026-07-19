@@ -6,6 +6,17 @@
 #      and patched (this is where the real churn is; the module has no external deps yet).
 #   2. gomod - no external dependencies today (pure stdlib), included so that the go
 #      directive and any future dependency picks up security updates automatically.
+#
+# Grouping policy (deliberate):
+#   * minor + patch VERSION updates are grouped into one PR per ecosystem to cut noise.
+#   * major bumps are NEVER grouped - each gets its own PR so a breaking change can be
+#     reviewed and merged in isolation. A major hidden in a batch can block the whole
+#     group when it breaks something (real incident precedent from a sibling project).
+#   * security updates are intentionally NOT grouped. Dependabot's `update-types` filter
+#     does not apply to security updates, so a security group cannot exclude majors -
+#     grouping them would drag security majors into a batch, violating the rule above.
+#     Leaving them ungrouped means every advisory (and any security major) ships as its
+#     own PR that can be reviewed and merged promptly on its own.
 version: 2
 updates:
   # GitHub Actions used by ci.yml and release.yml
@@ -19,9 +30,10 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
-    # Batch minor/patch bumps into a single PR to cut review noise; majors stay separate.
     groups:
-      github-actions:
+      # minor/patch version bumps only; majors fall out to individual PRs.
+      github-actions-version:
+        applies-to: version-updates
         update-types:
           - "minor"
           - "patch"
@@ -38,7 +50,9 @@ updates:
     commit-message:
       prefix: "deps"
     groups:
-      go-modules:
+      # minor/patch version bumps only; majors fall out to individual PRs.
+      go-modules-version:
+        applies-to: version-updates
         update-types:
           - "minor"
           - "patch"
