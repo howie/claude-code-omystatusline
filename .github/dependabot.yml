@@ -35,9 +35,12 @@ updates:
     commit-message:
       prefix: "ci"
     groups:
-      # minor/patch version bumps only; majors fall out to individual PRs.
+      # All deps in this ecosystem (patterns: "*"), minor/patch only; majors fall out to
+      # individual PRs. patterns is given explicitly: a group needs a dependency matcher.
       github-actions-version:
         applies-to: version-updates
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
@@ -54,9 +57,12 @@ updates:
     commit-message:
       prefix: "deps"
     groups:
-      # minor/patch version bumps only; majors fall out to individual PRs.
+      # All deps in this ecosystem (patterns: "*"), minor/patch only; majors fall out to
+      # individual PRs. patterns is given explicitly: a group needs a dependency matcher.
       go-modules-version:
         applies-to: version-updates
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
