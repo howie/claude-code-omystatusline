@@ -1,0 +1,44 @@
+# Dependabot configuration
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Two ecosystems are tracked:
+#   1. github-actions - keeps the action versions in .github/workflows/*.yml current
+#      and patched (this is where the real churn is; the module has no external deps yet).
+#   2. gomod - no external dependencies today (pure stdlib), included so that the go
+#      directive and any future dependency picks up security updates automatically.
+version: 2
+updates:
+  # GitHub Actions used by ci.yml and release.yml
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+    # Batch minor/patch bumps into a single PR to cut review noise; majors stay separate.
+    groups:
+      github-actions:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Go modules (go.mod / go.sum)
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "deps"
+    groups:
+      go-modules:
+        update-types:
+          - "minor"
+          - "patch"
