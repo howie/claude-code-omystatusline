@@ -17,6 +17,7 @@ import (
 	"github.com/howie/claude-code-omystatusline/pkg/context"
 	"github.com/howie/claude-code-omystatusline/pkg/git"
 	"github.com/howie/claude-code-omystatusline/pkg/gitstatus"
+	"github.com/howie/claude-code-omystatusline/pkg/modelwindow"
 	"github.com/howie/claude-code-omystatusline/pkg/session"
 	"github.com/howie/claude-code-omystatusline/pkg/speed"
 	"github.com/howie/claude-code-omystatusline/pkg/statusline"
@@ -34,13 +35,26 @@ const (
 	maxTokensSourceEnvOverride    = "env-override"
 )
 
-// context window 容量（官方 Anthropic 規格）。
+// context window 容量（官方 Anthropic 規格）。單一真實來源為 pkg/modelwindow，
+// 此處別名保留本地短名，供 resolveMaxTokens / contextWindowFromInput / 測試引用。
 const (
-	contextWindow1M   = 1_000_000
-	contextWindow200K = 200_000
+	contextWindow1M   = modelwindow.Window1M
+	contextWindow200K = modelwindow.Window200K
 )
 
 func main() {
+	// Resolve the run mode from argv BEFORE touching stdin: the main and subagent
+	// status lines take incompatible JSON schemas, so dispatch must precede decoding.
+	mode, err := parseArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "statusline: %v\n", err)
+		os.Exit(2)
+	}
+	if mode == modeSubagent {
+		runSubagent()
+		return
+	}
+
 	var input statusline.Input
 	raw, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -580,74 +594,16 @@ func resolveMaxTokens(effectiveModelID, inputModelID, envMax string, inputWindow
 	return maxTokens, source
 }
 
-// contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens）。
-// ID 含 "[1m]" 標記時無條件回傳 1M（優先於下列家族/版本規則）。
-// 依官方 Anthropic 規格：Sonnet/Opus/Fable major >= 5，或 major == 4 且 minor >= 6 時為 1M；其餘為 200K。
-// 未知家族亦套用相同版本規則，避免下一個新家族重演 fable 落入 200K fallback 的 regression。
-// 此函式永遠是百分比的分母（denominator）；ContextWindowSize 不可用作分母（見 hasContextWindow 上方注解）。
+// contextWindowForModel 根據模型 ID 回傳 context window 大小（tokens），是主 statusline
+// 百分比的分母（denominator）。版本/家族推斷邏輯已抽到 pkg/modelwindow；此處僅保留主線
+// 特有的副作用：未知非空家族退回 200K 猜測時印一行 stderr 警告（modelwindow 本身無副作用）。
+// ContextWindowSize 不可用作分母（見 hasContextWindow 上方注解）。
 func contextWindowForModel(modelID string) int {
-	id := strings.ToLower(modelID)
-	// "[1m]" 是 Claude Code 對 1M context session 的明確標記（如 claude-fable-5[1m]），
-	// 比家族/版本推斷更可靠，優先採信。
-	if strings.Contains(id, "[1m]") {
-		return contextWindow1M
-	}
-	switch {
-	case strings.Contains(id, "haiku"):
-		return contextWindow200K // Haiku 從未超過 200K；如有更大版本請重新評估
-	case strings.Contains(id, "sonnet"), strings.Contains(id, "opus"), strings.Contains(id, "fable"):
-		if claudeModelIs1M(id) {
-			return contextWindow1M
-		}
-		return contextWindow200K
-	case id != "":
-		// 未知家族也套用版本規則：major >= 5 的新家族（如未來的 claude-nova-5）
-		// 視為 1M，不再無條件 200K。
-		if claudeModelIs1M(id) {
-			return contextWindow1M
-		}
+	size, confident := modelwindow.Infer(modelID)
+	if !confident && modelID != "" {
 		fmt.Fprintf(os.Stderr, "statusline: unknown model %q, using 200K context window fallback\n", modelID)
-		return contextWindow200K
-	default:
-		return context.DefaultMaxTokens
 	}
-}
-
-// claudeModelIs1M 回報 claude 模型是否有 1M context window。
-// 解析 claude-*-{major}-{minor}[-date] 中的 major/minor，版本規則：
-//   - major >= 5 → 1M（為未來大版本預留）
-//   - major == 4 && minor >= 6 → 1M（Sonnet 4.6+、Opus 4.6+）
-//   - 其他 → false（保守 fallback）
-func claudeModelIs1M(id string) bool {
-	major, minor := claudeModelVersion(id)
-	return major >= 5 || (major == 4 && minor >= 6)
-}
-
-// claudeModelVersion 從 claude-*-{major}-{minor}[-date] 格式解析 (major, minor)。
-// 從 ID 末端向前掃描，找最後兩個連續的小整數 token（< 100，避免誤認 date suffix）。
-// 找不到兩個連續整數時，fallback 到最後一個單獨的小整數，視為 {major}.0
-// （如 claude-fable-5 → (5, 0)）。完全解析失敗時回傳 (-1, -1)。
-func claudeModelVersion(id string) (int, int) {
-	parts := strings.Split(id, "-")
-	for i := len(parts) - 1; i >= 1; i-- {
-		minor, err1 := strconv.Atoi(parts[i])
-		major, err2 := strconv.Atoi(parts[i-1])
-		if err1 != nil || err2 != nil {
-			continue
-		}
-		// 限制在合理版本範圍內（排除 date suffix 如 20250514）
-		if major > 0 && major < 100 && minor >= 0 && minor < 100 {
-			return major, minor
-		}
-	}
-	// 單版本號模型（無 minor）：取末端最後一個合理範圍的整數當 major
-	for i := len(parts) - 1; i >= 0; i-- {
-		major, err := strconv.Atoi(parts[i])
-		if err == nil && major > 0 && major < 100 {
-			return major, 0
-		}
-	}
-	return -1, -1
+	return size
 }
 
 // contextWindowFromInput trusts Claude Code's reported context_window_size as the percentage

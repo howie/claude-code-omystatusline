@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [Unreleased]
+
+### Features
+
+- support Claude Code `subagentStatusLine` via a `--subagent` flag: renders per-subagent
+  agent-panel rows (name, status, per-agent context bar) from the distinct tasks payload (#47)
+- add reusable `pkg/modelwindow` (stdlib-only model→context-window inference with a
+  confidence signal) and `pkg/subagentstatus`; extract window logic out of `package main`
+- add `statusline.TruncateToWidth`, an ANSI-aware hard width clamp bounding each subagent
+  row to the payload's `columns`
+
+### Notes
+
+- verified via a real-payload spike that per-task `tokenCount` is current context occupancy
+  (not cumulative), so the per-agent percentage bar is safe; the two-part #35/#36 non-demoting
+  denominator guard is applied per task, and an untrusted denominator falls back to token-only
+
 ## [1.3.0] - 2026-06-18
 
 ### Features
