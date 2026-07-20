@@ -9,12 +9,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Execute the Go statusline binary with JSON input and use printf to interpret ANSI codes
 # Set STATUSLINE_DUMP_STDIN=/tmp/statusline-stdin.json to capture the raw stdin for debugging.
 # Reads stdin once into a variable so the dump and the binary receive the same data.
+# "$@" forwards CLI args (e.g. --subagent) so this wrapper can back subagentStatusLine too.
+# Note: for the multi-line subagentStatusLine output, pointing subagentStatusLine directly
+# at statusline-go (bypassing this wrapper's printf %b) is recommended; see README.
 if [ -n "$STATUSLINE_DUMP_STDIN" ]; then
   stdin_data=$(cat)
   if ! printf '%s\n' "$stdin_data" > "$STATUSLINE_DUMP_STDIN"; then
     printf 'statusline-wrapper: WARNING: could not write STATUSLINE_DUMP_STDIN to %s\n' "$STATUSLINE_DUMP_STDIN" >&2
   fi
-  printf "%b" "$(printf '%s\n' "$stdin_data" | "$SCRIPT_DIR/statusline-go")"
+  printf "%b" "$(printf '%s\n' "$stdin_data" | "$SCRIPT_DIR/statusline-go" "$@")"
 else
-  printf "%b" "$(cat | "$SCRIPT_DIR/statusline-go")"
+  printf "%b" "$(cat | "$SCRIPT_DIR/statusline-go" "$@")"
 fi

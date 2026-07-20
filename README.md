@@ -180,6 +180,26 @@ Then manually add to your `~/.claude/settings.json`:
 }
 ```
 
+### Subagent status line (optional)
+
+The same binary can also render Claude Code's **subagent status line** — the per-agent
+rows shown in the agent panel below the prompt — via the `--subagent` flag. Point the
+binary directly at it (recommended over the wrapper, since the output is multi-line):
+
+```json
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "~/.claude/omystatusline/bin/statusline-go --subagent"
+  }
+}
+```
+
+Each row shows the agent's name, status, and a context bar computed from its own model
+and token count. Requires Claude Code v2.1.205+ for per-agent model/context data; older
+versions fall back to a token-only row. This is opt-in and separate from the main
+`statusLine` — the installer does not configure it automatically.
+
 ### Manual Installation
 
 See [Installation Guide](docs/installation.md) for detailed instructions.
@@ -434,6 +454,25 @@ make install-simple
   }
 }
 ```
+
+### Subagent 狀態列（選用）
+
+同一支 binary 也能透過 `--subagent` 旗標渲染 Claude Code 的 **subagent 狀態列**——
+即 prompt 下方 agent panel 中每個 subagent 的那一列。因為輸出為多行，建議直接指向 binary
+（而非 wrapper）：
+
+```json
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "~/.claude/omystatusline/bin/statusline-go --subagent"
+  }
+}
+```
+
+每一列顯示該 agent 的名稱、狀態，以及依其自身 model 與 token 數計算的 context 進度條。
+per-agent 的 model／context 資料需要 Claude Code v2.1.205+；較舊版本會退回只顯示 token 數。
+此功能為選用，與主 `statusLine` 獨立——安裝程式不會自動設定。
 
 ### 手動安裝
 

@@ -283,38 +283,8 @@ func TestResolveMaxTokens(t *testing.T) {
 	}
 }
 
-func TestClaudeModelVersion(t *testing.T) {
-	cases := []struct {
-		id        string
-		wantMajor int
-		wantMinor int
-	}{
-		{"claude-sonnet-4-6", 4, 6},
-		{"claude-opus-4-7-20251001", 4, 7},
-		{"claude-sonnet-4-5-20250929", 4, 5},
-		{"claude-sonnet-5-0", 5, 0},
-		{"claude-opus-4-1-20250805", 4, 1},
-		{"claude-haiku-4-5", 4, 5},
-		// 單版本號（無 minor）→ fallback 視為 {major}.0
-		{"claude-fable-5", 5, 0},
-		{"claude-sonnet-4-20250514", 4, 0},
-		{"claude-sonnet-4-", 4, 0},
-		{"claude-future-1", 1, 0},
-		// 完全無合理整數 → 不可解析
-		{"claude-sonnet-20250514", -1, -1},
-		{"", -1, -1},
-		{"sonnet-4-10", 4, 10},
-	}
-	for _, tc := range cases {
-		t.Run(tc.id, func(t *testing.T) {
-			maj, min := claudeModelVersion(strings.ToLower(tc.id))
-			if maj != tc.wantMajor || min != tc.wantMinor {
-				t.Errorf("claudeModelVersion(%q) = (%d, %d), want (%d, %d)", tc.id, maj, min, tc.wantMajor, tc.wantMinor)
-			}
-		})
-	}
-}
-
+// Version parsing moved to pkg/modelwindow (see TestVersion there). TestContextWindowForModel
+// below stays as the byte-for-byte characterization test of the main-line wrapper.
 func TestContextWindowForModel(t *testing.T) {
 	cases := []struct {
 		name    string
